@@ -48,6 +48,13 @@ private:
   [[maybe_unused]] uint32_t page_allocated_;
   [[maybe_unused]] uint32_t next_free_page_;
   [[maybe_unused]] unsigned char bytes[MAX_CHARS];
+
+  void setTrue(uint32_t byte_index, uint8_t bit_index);
+  void setFalse(uint32_t byte_index, uint8_t bit_index);
+
+  uint32_t find_next_free_page();
+
+
 };
 
 #endif //MINISQL_BITMAP_PAGE_H

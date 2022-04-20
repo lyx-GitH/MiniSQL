@@ -17,9 +17,12 @@ TEST(DiskManagerTest, BitMapPageTest) {
   for (uint32_t i = 0; i < num_pages; i++) {
     ASSERT_TRUE(bitmap->AllocatePage(ofs));
     ASSERT_TRUE(page_set.find(ofs) == page_set.end());
+//    std::cout<<"ofs: "<<ofs<<std::endl;
+    ASSERT_FALSE(bitmap->IsPageFree(ofs));
     page_set.insert(ofs);
   }
   ASSERT_FALSE(bitmap->AllocatePage(ofs));
+  ASSERT_FALSE(bitmap->IsPageFree(233));
   ASSERT_TRUE(bitmap->DeAllocatePage(233));
   ASSERT_TRUE(bitmap->AllocatePage(ofs));
   ASSERT_EQ(233, ofs);
