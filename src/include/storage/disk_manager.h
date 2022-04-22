@@ -19,6 +19,9 @@
  * | Meta Page | Free Page BitMap 1 | Page 1 | Page 2 | ....
  *      | Page N | Free Page BitMap 2 | Page N+1 | ... | Page 2N | ... |
  */
+
+
+
 class DiskManager {
 public:
   explicit DiskManager(const std::string &db_file);
@@ -93,6 +96,12 @@ private:
    */
   page_id_t MapPageId(page_id_t logical_page_id);
 
+  page_id_t GetBlockId(page_id_t logical_page_id);
+
+  page_id_t GetLocalId(page_id_t logical_page_id);
+
+  page_id_t GetMetaIdP(page_id_t logical_page_id);
+
 private:
   // stream to write db file
   std::fstream db_io_;
@@ -101,6 +110,8 @@ private:
   std::recursive_mutex db_io_latch_;
   bool closed{false};
   char meta_data_[PAGE_SIZE];
+
+
 };
 
 #endif

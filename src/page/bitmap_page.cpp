@@ -25,7 +25,7 @@ bool BitmapPage<PageSize>::DeAllocatePage(uint32_t page_offset) {
   if (page_offset >= GetMaxSupportedSize() || IsPageFreeLow(split(page_offset)))
     return false;
   else {
-    setFalse(page_offset / 8, page_offset % 8);
+    setFalse(split(page_offset));
     next_free_page_ = page_offset;
     page_allocated_ -= 1;
     return true;
@@ -68,7 +68,7 @@ uint32_t BitmapPage<PageSize>::find_next_free_page() {
     }
   }
 
-  return -1;
+  return INVALID_PAGE_ID;
 }
 
 template class BitmapPage<64>;
