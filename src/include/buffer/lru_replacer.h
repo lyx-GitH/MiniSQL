@@ -37,6 +37,8 @@ public:
 
 private:
   // add your own private member variables here
+  list<frame_id_t> lru_list;
+  size_t num_pages;
 };
 
 #endif  // MINISQL_LRU_REPLACER_H
