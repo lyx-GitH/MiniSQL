@@ -50,5 +50,5 @@ void LRUReplacer::Unpin(frame_id_t frame_id) {
 }
 
 size_t LRUReplacer::Size() {
-  return lru_list.size();
+  return lru_list.size(); 
 }
