@@ -28,7 +28,9 @@ void LRUReplacer::Unpin(frame_id_t frame_id) {
   list<frame_id_t>::iterator it = lru_list.begin();
   for (; it != lru_list.end(); ++it) // to find whether the frame_id exists
   {
-    if (*it == frame_id) break;
+
+    if (*it == frame_id) break; 
+
   }
   if (it == lru_list.end()) // doesn't exist
   {
