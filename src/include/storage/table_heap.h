@@ -6,6 +6,12 @@
 #include "storage/table_iterator.h"
 #include "transaction/log_manager.h"
 #include "transaction/lock_manager.h"
+#include "map"
+#include "unordered_set"
+
+#define INSERT(C, P) C[P->GetRemain()].insert(P->GetTablePageId())
+#define ERASE(C, P) C[P->GetRemain()].erase(P->GetTablePageId())
+#define HAS(C, P) C[P->GetRemain()].count(P->GetTablePageId()) !=0
 
 class TableHeap {
   friend class TableIterator;
@@ -102,7 +108,10 @@ private:
           schema_(schema),
           log_manager_(log_manager),
           lock_manager_(lock_manager) {
-    ASSERT(false, "Not implemented yet.");
+    auto FirstPage = static_cast<TablePage* >(buffer_pool_manager->NewPage(first_page_id_));
+    ASSERT(FirstPage != nullptr, "TableHeap : First Page Allocation failed");
+    FirstPage->Init(INVALID_PAGE_ID, INVALID_PAGE_ID, log_manager, txn);
+    INSERT(Pages, FirstPage);
   };
 
   /**
@@ -114,14 +123,31 @@ private:
             first_page_id_(first_page_id),
             schema_(schema),
             log_manager_(log_manager),
-            lock_manager_(lock_manager) {}
+            lock_manager_(lock_manager) {
+    //This constructor is like copy constructor
+    //Push every page into <Pages> for access.
+    auto cur_page_id = first_page_id_;
+    TablePage* cur_page = nullptr;
+    while(cur_page_id != INVALID_PAGE_ID) {
+      cur_page = static_cast<TablePage*>(buffer_pool_manager_->FetchPage(cur_page_id));
+      ASSERT(cur_page!= nullptr, "NULL page encountered");
+      INSERT(Pages, cur_page);
+      cur_page_id = cur_page->GetNextPageId();
+    }
+
+  }
 
 private:
   BufferPoolManager *buffer_pool_manager_;
   page_id_t first_page_id_;
   Schema *schema_;
+
+  std::map<int64_t, std::unordered_set<page_id_t>> Pages;
+
   [[maybe_unused]] LogManager *log_manager_;
   [[maybe_unused]] LockManager *lock_manager_;
+
+
 };
 
 #endif  // MINISQL_TABLE_HEAP_H

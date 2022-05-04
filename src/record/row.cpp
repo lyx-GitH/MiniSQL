@@ -77,9 +77,11 @@ uint32_t Row::DeserializeFrom(char *buf, Schema *schema) {
     type = schema->GetColumn(i)->GetType();
 
     if(getBit(NullMap, i) == 0 ) {
+      //Null Field
       Field::DeserializeFrom(buf, type, &fd, true, heap_);
     } else {
-      steps = Field::DeserializeFrom(buf, type, &fd, true, heap_);
+      //Not Null Field
+      steps = Field::DeserializeFrom(buf, type, &fd, false, heap_);
       STEP_FORWARD(buf, ser_cnt, steps);
     }
 
@@ -98,7 +100,7 @@ if(fields_.empty())
 auto ser_cnt = sizeof (uint32_t) + sizeof (uint64_t);
 
 for(auto field : fields_) {
-  ser_cnt += field->IsNull() ? 0 : field->GetSerializedSize();
+  ser_cnt += field->GetSerializedSize();
 }
 
 return ser_cnt;
