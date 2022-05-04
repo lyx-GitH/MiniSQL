@@ -24,6 +24,7 @@
            } while (0)
 #define MACH_WRITE_UINT32(Buf, Data) MACH_WRITE_TO(uint32_t, (Buf), (Data))
 #define MACH_WRITE_INT32(Buf, Data) MACH_WRITE_TO(int32_t, (Buf), (Data))
+#define MACH_WRITE_UINT64(Buf, Data) MACH_WRITE_TO(uint64_t, (Buf), (Data))
 #define MACH_WRITE_STRING(Buf, Str)      \
            do {                                       \
               memcpy(Buf, Str.c_str(), Str.length()); \
@@ -32,6 +33,7 @@
 #define MACH_READ_FROM(Type, Buf) (*reinterpret_cast<const Type *>(Buf))
 #define MACH_READ_UINT32(Buf) MACH_READ_FROM(uint32_t, (Buf))
 #define MACH_READ_INT32(Buf) MACH_READ_FROM(int32_t, (Buf))
+#define MACH_READ_UINT64(Buf) MACH_READ_FROM(uint64_t, (Buf))
 
 #define MACH_STR_SERIALIZED_SIZE(Str) (4 + Str.length())
 
@@ -39,5 +41,7 @@
 #define ALLOC_P(Heap, Type) new(Heap->Allocate(sizeof(Type)))Type
 #define ALLOC_COLUMN(Heap) ALLOC(Heap, Column)
 
+#define MOVE_FORWARD(ptr, cnt, type) do{ ptr += sizeof(type); cnt += sizeof(type); } while(0)
+#define STEP_FORWARD(ptr, cnt, steps) do{ptr += (steps); cnt += (steps);}while(0)
 
 #endif  // MINISQL_MACROS_H

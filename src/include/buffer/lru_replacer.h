@@ -15,7 +15,7 @@ using namespace std;
  * LRUReplacer implements the Least Recently Used replacement policy.
  */
 class LRUReplacer : public Replacer {
-public:
+ public:
   /**
    * Create a new LRUReplacer.
    * @param num_pages the maximum number of pages the LRUReplacer will be required to store
@@ -35,8 +35,10 @@ public:
 
   size_t Size() override;
 
-private:
+ private:
   // add your own private member variables here
+  list<frame_id_t> lru_list;
+  size_t num_pages;
 };
 
 #endif  // MINISQL_LRU_REPLACER_H

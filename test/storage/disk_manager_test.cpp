@@ -42,7 +42,7 @@ TEST(DiskManagerTest, FreePageAllocationTest) {
   DiskManager *disk_mgr = new DiskManager(db_name);
   int extent_nums = 2;
 
-  std::cout << DiskManager::BITMAP_SIZE << '\n';
+//  std::cout << DiskManager::BITMAP_SIZE << '\n';
 
   for (uint32_t i = 0; i < DiskManager::BITMAP_SIZE*extent_nums; i++) {
     page_id_t page_id = disk_mgr->AllocatePage();
