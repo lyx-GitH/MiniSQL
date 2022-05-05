@@ -9,7 +9,7 @@ bool TableHeap::InsertTuple(Row &row, Transaction *txn) {
     // No page is enough for insertion
     page_id_t new_page_id = INVALID_PAGE_ID;
     auto new_page = static_cast<TablePage *>(buffer_pool_manager_->NewPage(new_page_id));
-    auto old_page = static_cast<TablePage *>(buffer_pool_manager_->NewPage(first_page_id_));
+    auto old_page = static_cast<TablePage *>(buffer_pool_manager_->FetchPage(first_page_id_));
 
     ASSERT(new_page != nullptr, "TableHeap::InsertTuple : Null While Allocating New Page");
 

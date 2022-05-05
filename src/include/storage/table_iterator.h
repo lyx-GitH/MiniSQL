@@ -5,6 +5,7 @@
 #include "common/rowid.h"
 #include "record/row.h"
 #include "transaction/transaction.h"
+#include <map>
 
 class TableHeap;
 class TablePage;
@@ -73,7 +74,8 @@ class TableIterator {
   }
 };
 
-Row* TableIterator::INVALID_ROW = new Row(INVALID_ROWID);
+
+
 
 
 

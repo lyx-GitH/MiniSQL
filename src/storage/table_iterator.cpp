@@ -2,6 +2,9 @@
 #include "common/macros.h"
 #include "storage/table_heap.h"
 
+Row* TableIterator::INVALID_ROW = new Row(INVALID_ROWID);
+std::map<Row *, uint32_t> TableIterator::ptr_refs = {};
+
 TableIterator::TableIterator()
     : ThisManager(nullptr), ThisPage(nullptr), ThisSchema(nullptr), ThisRow(TableIterator::INVALID_ROW) {}
 
