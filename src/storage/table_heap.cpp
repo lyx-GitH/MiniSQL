@@ -118,11 +118,15 @@ bool TableHeap::GetTuple(Row *row, Transaction *txn) {
 }
 
 TableIterator TableHeap::Begin(Transaction *txn) {
-  ASSERT(first_page_id_ != INVALID_PAGE_ID, "TableHeap::Begin : Empty TableHeap");
   auto FirstPage = static_cast<TablePage *>(buffer_pool_manager_->FetchPage(first_page_id_));
-  auto FirstTupleId = INVALID_ROWID;
-  ASSERT(FirstPage->GetFirstTupleRid(&FirstTupleId), "TableHeap::Begin: Empty First Tuple");
-  return TableIterator(buffer_pool_manager_, FirstPage, schema_, FirstTupleId);
+  if (FirstPage == nullptr)
+    // first page is empty
+    return End();
+  auto row_id = INVALID_ROWID;
+  if (FirstPage->GetFirstTupleRid(&row_id)) {
+    return TableIterator(buffer_pool_manager_, FirstPage, schema_, row_id);
+  } else
+    return End();  // First tuple is empty,
 }
 
-TableIterator TableHeap::End() { return TableIterator(buffer_pool_manager_, nullptr, schema_, INVALID_ROWID); }
+TableIterator TableHeap::End() { return TableIterator(buffer_pool_manager_, nullptr, schema_); }

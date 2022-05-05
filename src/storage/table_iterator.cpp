@@ -2,7 +2,7 @@
 #include "common/macros.h"
 #include "storage/table_heap.h"
 
-Row* TableIterator::INVALID_ROW = new Row(INVALID_ROWID);
+Row *TableIterator::INVALID_ROW = new Row(INVALID_ROWID);
 std::map<Row *, uint32_t> TableIterator::ptr_refs = {};
 
 TableIterator::TableIterator()
@@ -10,6 +10,8 @@ TableIterator::TableIterator()
 
 TableIterator::TableIterator(BufferPoolManager *_bpm, TablePage *_tp, Schema *_s, const RowId &rid)
     : ThisManager(_bpm), ThisPage(_tp), ThisSchema(_s), ThisRow(alloc_row(rid)) {}
+TableIterator::TableIterator(BufferPoolManager *_bpm, TablePage *_tp, Schema *_s)
+    : ThisManager(_bpm), ThisPage(_tp), ThisSchema(_s), ThisRow(TableIterator::INVALID_ROW) {}
 
 TableIterator::TableIterator(const TableIterator &other)
     : ThisManager(other.ThisManager),
@@ -47,7 +49,7 @@ TableIterator &TableIterator::operator++() {
     } else
       ThisRow = TableIterator::INVALID_ROW;
 
-  } else //this tuple is not the last tuple
+  } else  // this tuple is not the last tuple
     ThisRow = alloc_row(next_rid);
 
   return *this;
@@ -67,7 +69,7 @@ TableIterator TableIterator::operator++(int) {
     } else
       ThisRow = TableIterator::INVALID_ROW;
 
-  } else //this tuple is not the last tuple
+  } else  // this tuple is not the last tuple
     ThisRow = alloc_row(next_rid);
 
   return itr;

@@ -17,6 +17,8 @@ class TableIterator {
 
   explicit TableIterator(BufferPoolManager *_bpm, TablePage *_tp, Schema *_s, const RowId &rid);
 
+  explicit TableIterator(BufferPoolManager *_bpm, TablePage *_tp, Schema *_s);
+
   TableIterator(const TableIterator &other);
 
   virtual ~TableIterator();
