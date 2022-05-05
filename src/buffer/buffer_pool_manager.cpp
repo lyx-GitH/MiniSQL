@@ -21,7 +21,9 @@ BufferPoolManager::~BufferPoolManager() {
 
 Page *BufferPoolManager::FetchPage(page_id_t page_id) {
   // 1.     Search the page table for the requested page (P).
+
   auto map_it = page_table_.begin();
+
   for (; map_it != page_table_.end(); ++ map_it)
   {
     if (map_it->first == page_id) break; // P exists
@@ -32,6 +34,7 @@ Page *BufferPoolManager::FetchPage(page_id_t page_id) {
     for (Page *P = pages_; P->GetPageId() != INVALID_PAGE_ID; ++ P)
     {
       if (P->GetPageId() == page_id)
+
       {
         (*replacer_).Pin(map_it->second);
         P->pin_count_ ++;
@@ -44,6 +47,7 @@ Page *BufferPoolManager::FetchPage(page_id_t page_id) {
   {
     Page *R = pages_;
     frame_id_t frame_id; // frame id of R
+
 
     if (!free_list_.empty()) // Note that pages are always found from the free list first.
     {
@@ -59,7 +63,9 @@ Page *BufferPoolManager::FetchPage(page_id_t page_id) {
       }
     }
 
+
     auto map_it0 = page_table_.begin();
+
     for (; map_it0 != page_table_.end(); ++ map_it0)
     {
       if (map_it0->second == frame_id) break; // find R from the page table
@@ -69,6 +75,7 @@ Page *BufferPoolManager::FetchPage(page_id_t page_id) {
     {
       for (; R->GetPageId() != INVALID_PAGE_ID; ++ R)
       {
+
         if (R->GetPageId() == map_it0->first)
         {
           break; // the page R
@@ -99,6 +106,7 @@ Page *BufferPoolManager::NewPage(page_id_t &page_id) {
   // 0.   Make sure you call AllocatePage!
   frame_id_t frame_id; // frame id of P
 
+
   // 1.   If all the pages in the buffer pool are pinned, return nullptr.
   // 2.   Pick a victim page P from either the free list or the replacer. Always pick from the free list first.
   if (!free_list_.empty()) // pick from the free list first
@@ -117,7 +125,9 @@ Page *BufferPoolManager::NewPage(page_id_t &page_id) {
 
   page_id_t next_page_id = AllocatePage();
 
+
   auto map_it = page_table_.begin();
+
   for(; map_it != page_table_.end(); ++map_it) // if the frame_id is in the map, erase it
   {
     if (map_it->second == frame_id)
@@ -136,6 +146,7 @@ Page *BufferPoolManager::NewPage(page_id_t &page_id) {
   page_id = next_page_id;
   return &pages_[frame_id];
 }
+
 
 bool BufferPoolManager::DeletePage(page_id_t page_id)
 {
@@ -206,6 +217,7 @@ bool BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty)
   return false;
 }
 
+
 bool BufferPoolManager::FlushPage(page_id_t page_id)
 {
   Page* p = pages_;
@@ -231,10 +243,12 @@ page_id_t BufferPoolManager::AllocatePage() {
   return next_page_id;
 }
 
+
 void BufferPoolManager::DeallocatePage(page_id_t page_id)
 {
   disk_manager_->DeAllocatePage(page_id);
 }
+
 
 bool BufferPoolManager::IsPageFree(page_id_t page_id)
 {
@@ -242,7 +256,9 @@ bool BufferPoolManager::IsPageFree(page_id_t page_id)
 }
 
 // Only used for debug
+
 bool BufferPoolManager::CheckAllUnpinned()
+
 {
   bool res = true;
   for (size_t i = 0; i < pool_size_; i++) {
