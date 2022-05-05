@@ -2,69 +2,70 @@
 #include "common/macros.h"
 #include "storage/table_heap.h"
 
-TableIterator::TableIterator() : ThisManager(nullptr), ThisPage(nullptr), ThisSchema(nullptr) {}
+TableIterator::TableIterator()
+    : ThisManager(nullptr), ThisPage(nullptr), ThisSchema(nullptr), ThisRow(TableIterator::INVALID_ROW) {}
 
-TableIterator::TableIterator(BufferPoolManager *_bpm, TablePage* _tp, Schema *_s, const RowId &rid) {
-  ThisManager = _bpm;
-  ThisSchema = _s;
-  ThisPage = _tp;
-  ThisRowID = rid;
-}
+TableIterator::TableIterator(BufferPoolManager *_bpm, TablePage *_tp, Schema *_s, const RowId &rid)
+    : ThisManager(_bpm), ThisPage(_tp), ThisSchema(_s), ThisRow(alloc_row(rid)) {}
 
+TableIterator::TableIterator(const TableIterator &other)
+    : ThisManager(other.ThisManager),
+      ThisPage(other.ThisPage),
+      ThisSchema(other.ThisSchema),
+      ThisRow(copy_row(other.ThisRow)) {}
 
-
-TableIterator::TableIterator(const TableIterator &other) {
-  ThisManager = other.ThisManager;
-  ThisPage = other.ThisPage;
-  ThisSchema = other.ThisSchema;
-}
-
-TableIterator::~TableIterator() {
-
-}
+TableIterator::~TableIterator() { destroy_row(ThisRow); }
 
 bool TableIterator::operator==(const TableIterator &itr) const {
-  return ThisManager == itr.ThisManager && ThisRowID == itr.ThisRowID;
+  return itr.ThisRow->GetRowId() == ThisRow->GetRowId();
 }
 
 bool TableIterator::operator!=(const TableIterator &itr) const { return !(*this == itr); }
 
 const Row &TableIterator::operator*() {
-  Row* row_out = new Row(ThisRowID);
-  ASSERT(ThisPage->GetTuple(row_out, ThisSchema, nullptr, nullptr), "TableIterator::operator* : Invalid Fetch");
-  return *row_out;
+  ASSERT(ThisPage->GetTuple(ThisRow, ThisSchema, nullptr, nullptr), "TableIterator::operator* : Invalid Fetch");
+  return *ThisRow;
 }
 
 Row *TableIterator::operator->() {
-  Row* row_out = new Row(ThisRowID);
-  ASSERT(ThisPage->GetTuple(row_out, ThisSchema, nullptr, nullptr), "TableIterator::operator* : Invalid Fetch");
-  return row_out;
-
+  ASSERT(ThisPage->GetTuple(ThisRow, ThisSchema, nullptr, nullptr), "TableIterator::operator* : Invalid Fetch");
+  return ThisRow;
 }
 
 TableIterator &TableIterator::operator++() {
-  if(! ThisPage->GetNextTupleRid(ThisRowID, &ThisRowID)){
-    //This row is the last row
+  auto next_rid = INVALID_ROWID;
+  destroy_row(ThisRow);
+  if (!ThisPage->GetNextTupleRid(ThisRow->GetRowId(), &next_rid)) {
+    // this tuple is the last of this page;
     ThisPage = static_cast<TablePage *>(ThisManager->FetchPage(ThisPage->GetNextPageId()));
-    if(ThisPage) {
-      ThisPage->GetFirstTupleRid(&ThisRowID);
-    } else ThisRowID = INVALID_ROWID;
-  }
-  //else , just go to the next row
+    if (ThisPage) {
+      ThisPage->GetFirstTupleRid(&next_rid);
+      ThisRow = alloc_row(next_rid);
+    } else
+      ThisRow = TableIterator::INVALID_ROW;
+
+  } else //this tuple is not the last tuple
+    ThisRow = alloc_row(next_rid);
 
   return *this;
 }
 
 TableIterator TableIterator::operator++(int) {
-  TablePage* _ThisPage = ThisPage;
-  RowId _ThisRowID = ThisRowID;
-  if(! ThisPage->GetNextTupleRid(ThisRowID, &_ThisRowID)){
-    //This row is the last row
-    _ThisPage = static_cast<TablePage *>(ThisManager->FetchPage(ThisPage->GetNextPageId()));
-    if(_ThisPage) {
-      _ThisPage->GetFirstTupleRid(&_ThisRowID);
-    } else _ThisRowID = INVALID_ROWID;
-  }
+  TableIterator itr = TableIterator(*this);
 
-  return TableIterator(ThisManager, ThisPage, ThisSchema, ThisRowID);
+  auto next_rid = INVALID_ROWID;
+  destroy_row(ThisRow);
+  if (!ThisPage->GetNextTupleRid(ThisRow->GetRowId(), &next_rid)) {
+    // this tuple is the last of this page;
+    ThisPage = static_cast<TablePage *>(ThisManager->FetchPage(ThisPage->GetNextPageId()));
+    if (ThisPage) {
+      ThisPage->GetFirstTupleRid(&next_rid);
+      ThisRow = alloc_row(next_rid);
+    } else
+      ThisRow = TableIterator::INVALID_ROW;
+
+  } else //this tuple is not the last tuple
+    ThisRow = alloc_row(next_rid);
+
+  return itr;
 }

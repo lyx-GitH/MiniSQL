@@ -110,7 +110,8 @@ private:
           lock_manager_(lock_manager) {
     auto FirstPage = static_cast<TablePage* >(buffer_pool_manager->NewPage(first_page_id_));
     ASSERT(FirstPage != nullptr, "TableHeap : First Page Allocation failed");
-    FirstPage->Init(INVALID_PAGE_ID, INVALID_PAGE_ID, log_manager, txn);
+    FirstPage->Init(first_page_id_, INVALID_PAGE_ID, log_manager, txn);
+    FirstPage->SetNextPageId(INVALID_PAGE_ID);
     INSERT(Pages, FirstPage);
   };
 

@@ -9,12 +9,15 @@ bool TableHeap::InsertTuple(Row &row, Transaction *txn) {
     // No page is enough for insertion
     page_id_t new_page_id = INVALID_PAGE_ID;
     auto new_page = static_cast<TablePage *>(buffer_pool_manager_->NewPage(new_page_id));
+    auto old_page = static_cast<TablePage *>(buffer_pool_manager_->NewPage(first_page_id_));
 
     ASSERT(new_page != nullptr, "TableHeap::InsertTuple : Null While Allocating New Page");
 
     // set this page to the front of the list.
     new_page->Init(new_page_id, INVALID_PAGE_ID, log_manager_, txn);
     new_page->SetNextPageId(first_page_id_);
+    old_page->SetPrevPageId(new_page_id);
+
     first_page_id_ = new_page->GetTablePageId();
     isInsertSuccess = new_page->InsertTuple(row, schema_, txn, lock_manager_, log_manager_);
     INSERT(Pages, new_page);
@@ -70,7 +73,7 @@ void TableHeap::ApplyDelete(const RowId &rid, Transaction *txn) {
   // Step1: Find the page which contains the tuple.
   // Step2: Delete the tuple from the page.
   auto page_id = rid.GetPageId();
-  auto page = static_cast<TablePage*>(buffer_pool_manager_->FetchPage(page_id));
+  auto page = static_cast<TablePage *>(buffer_pool_manager_->FetchPage(page_id));
 
   ASSERT(page != nullptr, "TableHeap::ApplyDelete : Page dose not exist");
   ERASE(Pages, page);
@@ -91,14 +94,25 @@ void TableHeap::RollbackDelete(const RowId &rid, Transaction *txn) {
   buffer_pool_manager_->UnpinPage(page->GetTablePageId(), true);
 }
 
-void TableHeap::FreeHeap() {}
+void TableHeap::FreeHeap() {
+  // destroy every page inside the heap
+  auto cur_page_id = first_page_id_;
+  auto temp = first_page_id_;
+  TablePage *ToBeDelete = nullptr;
+
+  while (cur_page_id != INVALID_PAGE_ID) {
+    temp = cur_page_id;
+    ToBeDelete = static_cast<TablePage *>(buffer_pool_manager_->FetchPage(cur_page_id));
+    cur_page_id = ToBeDelete->GetNextPageId();
+    buffer_pool_manager_->DeletePage(temp);
+  }
+}
 
 bool TableHeap::GetTuple(Row *row, Transaction *txn) {
   auto page_id = row->GetRowId().GetPageId();
   auto page = static_cast<TablePage *>(buffer_pool_manager_->FetchPage(page_id));
 
   ASSERT(page != nullptr, "TableHeap::GetTuple : Row ID Dose Not Exist");
-
 
   return page->GetTuple(row, schema_, txn, lock_manager_);
 }

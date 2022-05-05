@@ -59,7 +59,7 @@ uint32_t BitmapPage<PageSize>::find_next_free_page() {
   if (IsPageFree(page_allocated_)) return page_allocated_;
 
   for (uint32_t i = 0; i < MAX_CHARS; i++) {
-    if (bytes[i] != 255) {
+    if (bytes[i] != 0xFF) {
       //not full
       for (uint8_t j = 0; j < CHAR_SIZE; j++) {
         //equals to: i*8 + j
