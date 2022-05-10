@@ -1,12 +1,15 @@
 #ifndef MINISQL_B_PLUS_TREE_INTERNAL_PAGE_H
 #define MINISQL_B_PLUS_TREE_INTERNAL_PAGE_H
 
+
+
 #include <queue>
 #include "page/b_plus_tree_page.h"
 
 #define B_PLUS_TREE_INTERNAL_PAGE_TYPE BPlusTreeInternalPage<KeyType, ValueType, KeyComparator>
 #define INTERNAL_PAGE_HEADER_SIZE 24
 #define INTERNAL_PAGE_SIZE ((PAGE_SIZE - INTERNAL_PAGE_HEADER_SIZE) / (sizeof(MappingType)) - 1)
+#define GetBPlusNode(b, id) reinterpret_cast<BPlusTreePage *>(b->FetchPage(id)->GetData())
 /**
  * Store n indexed keys and n+1 child pointers (page_id) within internal page.
  * Pointer PAGE_ID(i) points to a subtree in which all keys K satisfy:
@@ -23,6 +26,7 @@
 INDEX_TEMPLATE_ARGUMENTS
 class BPlusTreeInternalPage : public BPlusTreePage {
 public:
+
   // must call initialize method after "create" a new node
   void Init(page_id_t page_id, page_id_t parent_id = INVALID_PAGE_ID, int max_size = INTERNAL_PAGE_SIZE);
 
@@ -61,6 +65,8 @@ private:
   void CopyLastFrom(const MappingType &pair, BufferPoolManager *buffer_pool_manager);
 
   void CopyFirstFrom(const MappingType &pair, BufferPoolManager *buffer_pool_manager);
+
+  int BinarySearch(const KeyType& key, const KeyComparator& comparator) const;
 
   MappingType array_[0];
 };

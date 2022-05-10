@@ -4,12 +4,15 @@
 #include "page/b_plus_tree_leaf_page.h"
 
 #define INDEXITERATOR_TYPE IndexIterator<KeyType, ValueType, KeyComparator>
+#define INVALID_ID -1
 
 INDEX_TEMPLATE_ARGUMENTS
 class IndexIterator {
 public:
   // you may define your own constructor based on your member variables
   explicit IndexIterator();
+
+  IndexIterator(BufferPoolManager* _bpm, BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>* _p);
 
   ~IndexIterator();
 
@@ -26,6 +29,10 @@ public:
   bool operator!=(const IndexIterator &itr) const;
 
 private:
+ BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>* ThisBPage;
+ int index;
+ BufferPoolManager* ThisManager;
+ MappingType* ThisPair;
   // add your own private member variables here
 };
 

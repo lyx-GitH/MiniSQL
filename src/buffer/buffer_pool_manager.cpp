@@ -35,7 +35,7 @@ Page *BufferPoolManager::FetchPage(page_id_t page_id) {
       if (P->GetPageId() == page_id)
 
       {
-        (*replacer_).Pin(map_it->second);
+        replacer_->Pin(map_it->second);
         P->pin_count_++;
         return P;
       }
@@ -188,7 +188,7 @@ bool BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty) {
         //        }
         auto map_it = page_table_.find(p->page_id_);
         if (map_it != page_table_.end()) {
-          (*replacer_).Unpin(map_it->second);
+          replacer_->Unpin(map_it->second);
           return true;
         }
       }

@@ -21,6 +21,8 @@ bool TableHeap::InsertTuple(Row &row, Transaction *txn) {
     first_page_id_ = new_page->GetTablePageId();
     isInsertSuccess = new_page->InsertTuple(row, schema_, txn, lock_manager_, log_manager_);
     INSERT(Pages, new_page);
+    buffer_pool_manager_->UnpinPage(new_page->GetTablePageId(), true);
+    buffer_pool_manager_->UnpinPage(old_page->GetTablePageId(), true);
   } else {
     auto that_page_id = *(Pages.begin()->second.begin());
     auto that_page = static_cast<TablePage *>(buffer_pool_manager_->FetchPage(that_page_id));
@@ -28,6 +30,7 @@ bool TableHeap::InsertTuple(Row &row, Transaction *txn) {
     ERASE(Pages, that_page);
     isInsertSuccess = that_page->InsertTuple(row, schema_, txn, lock_manager_, log_manager_);
     INSERT(Pages, that_page);
+    buffer_pool_manager_->UnpinPage(that_page->GetTablePageId(), true);
   }
 
   return isInsertSuccess;
@@ -65,6 +68,8 @@ bool TableHeap::UpdateTuple(const Row &row, const RowId &rid, Transaction *txn) 
   Row old_row_slot(rid);
   bool isUpdateSuccess = that_page->UpdateTuple(row, &old_row_slot, schema_, txn, lock_manager_, log_manager_);
   INSERT(Pages, that_page);
+
+  buffer_pool_manager_->UnpinPage(that_page_id, isUpdateSuccess);
 
   return isUpdateSuccess;
 }

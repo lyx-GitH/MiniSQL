@@ -5,11 +5,11 @@
 #include <string>
 #include <vector>
 
+#include "index/index_iterator.h"
 #include "page/b_plus_tree_internal_page.h"
 #include "page/b_plus_tree_leaf_page.h"
 #include "page/b_plus_tree_page.h"
 #include "transaction/transaction.h"
-#include "index/index_iterator.h"
 
 #define BPLUSTREE_TYPE BPlusTree<KeyType, ValueType, KeyComparator>
 
@@ -28,7 +28,7 @@ class BPlusTree {
   using InternalPage = BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator>;
   using LeafPage = BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>;
 
-public:
+ public:
   explicit BPlusTree(index_id_t index_id, BufferPoolManager *buffer_pool_manager, const KeyComparator &comparator,
                      int leaf_max_size = LEAF_PAGE_SIZE, int internal_max_size = INTERNAL_PAGE_SIZE);
 
@@ -59,6 +59,8 @@ public:
   // destroy the b plus tree
   void Destroy();
 
+  void Destroy(BPlusTreePage* node);
+
   void PrintTree(std::ofstream &out) {
     if (IsEmpty()) {
       return;
@@ -70,7 +72,7 @@ public:
     out << "}" << std::endl;
   }
 
-private:
+ private:
   void StartNewTree(const KeyType &key, const ValueType &value);
 
   bool InsertIntoLeaf(const KeyType &key, const ValueType &value, Transaction *transaction = nullptr);
@@ -78,17 +80,17 @@ private:
   void InsertIntoParent(BPlusTreePage *old_node, const KeyType &key, BPlusTreePage *new_node,
                         Transaction *transaction = nullptr);
 
-  template<typename N>
+  template <typename N>
   N *Split(N *node);
 
-  template<typename N>
+  template <typename N>
   bool CoalesceOrRedistribute(N *node, Transaction *transaction = nullptr);
 
-  template<typename N>
+  template <typename N>
   bool Coalesce(N **neighbor_node, N **node, BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> **parent,
                 int index, Transaction *transaction = nullptr);
 
-  template<typename N>
+  template <typename N>
   void Redistribute(N *neighbor_node, N *node, int index);
 
   bool AdjustRoot(BPlusTreePage *node);

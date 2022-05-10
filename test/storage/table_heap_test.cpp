@@ -11,6 +11,33 @@
 static string db_file_name = "table_heap_test.db";
 using Fields = std::vector<Field>;
 
+TEST(TablaHeapTest, MemHeapTest) {
+  SimpleMemHeap* heap = new SimpleMemHeap();
+  int iter = 1000;
+  std::unordered_map<void*, int> ptrs;
+  std::unordered_map<int, vector<void*>> ptr_sizes;
+
+
+  int size;
+  for(int i=0; i<iter; i++) {
+    size = RandomUtils::RandomInt(0, 16);
+    void* ptr = heap->Allocate(size);
+    ASSERT_TRUE(ptrs.find(ptr) == ptrs.end());
+    ptrs.insert(std::make_pair(ptr, size));
+    ptr_sizes[size].push_back(ptr);
+  }
+
+  auto vec_size = ptr_sizes[size].size();
+  void* that_ptr = ptr_sizes[size][vec_size/2];
+  heap->Free(that_ptr);
+
+  void* new_ptr = heap->Allocate(size);
+
+  ASSERT_EQ(new_ptr, that_ptr);
+
+  delete heap;
+}
+
 TEST(TableHeapTest, TableHeapSampleTest) {
   // init testing instance
   DBStorageEngine engine(db_file_name);

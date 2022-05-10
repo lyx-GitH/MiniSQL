@@ -39,16 +39,17 @@ Row *TableIterator::operator->() {
 
 TableIterator &TableIterator::operator++() {
   auto next_rid = INVALID_ROWID;
+//  auto old_page_id =ThisPage->GetTablePageId(), next_page_id = ThisPage->GetNextPageId();
   destroy_row(ThisRow);
   if (!ThisPage->GetNextTupleRid(ThisRow->GetRowId(), &next_rid)) {
     // this tuple is the last of this page;
+    ThisManager->UnpinPage(ThisPage->GetTablePageId(), ThisPage->IsDirty());
     ThisPage = static_cast<TablePage *>(ThisManager->FetchPage(ThisPage->GetNextPageId()));
     if (ThisPage) {
       ThisPage->GetFirstTupleRid(&next_rid);
       ThisRow = alloc_row(next_rid);
     } else
       ThisRow = TableIterator::INVALID_ROW;
-
   } else  // this tuple is not the last tuple
     ThisRow = alloc_row(next_rid);
 
