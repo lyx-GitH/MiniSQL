@@ -34,6 +34,7 @@ INDEX_TEMPLATE_ARGUMENTS
 class BPlusTreeLeafPage : public BPlusTreePage {
 public:
 
+
   // After creating a new leaf page from buffer pool, must call initialize
   // method to set default values
   void Init(page_id_t page_id, page_id_t parent_id = INVALID_PAGE_ID, int max_size = LEAF_PAGE_SIZE);
@@ -64,6 +65,8 @@ public:
   void MoveFirstToEndOf(BPlusTreeLeafPage *recipient);
 
   void MoveLastToFrontOf(BPlusTreeLeafPage *recipient);
+
+
 
 private:
   void CopyNFrom(MappingType *items, int size);

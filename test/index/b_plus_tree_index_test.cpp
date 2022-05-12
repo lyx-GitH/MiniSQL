@@ -3,9 +3,10 @@
 #include "common/instance.h"
 #include "gtest/gtest.h"
 #include "index/b_plus_tree_index.h"
+#include "index/b_plus_tree.h"
 #include "index/generic_key.h"
 
-static const std::string db_name = "bp_tree_index_test.db";
+static const std::string db_name = "bp_tree_index_test1.db";
 
 TEST(BPlusTreeTests, BPlusTreeIndexGenericKeyTest) {
   using INDEX_KEY_TYPE = GenericKey<32>;

@@ -81,6 +81,7 @@ int B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, const ValueType &valu
   }
 
   auto insert_place = BinarySearch(key, comparator);
+  ASSERT(insert_place >= GetSize() || comparator(key, array_[insert_place].first) <=0, "Wrong Insert Place");
   if (comparator(array_[insert_place].first, key) == 0)
     return -1;
   for (int i = size - 1; i >= insert_place; i--) array_[i + 1] = array_[i];

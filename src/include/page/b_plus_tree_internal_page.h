@@ -27,6 +27,7 @@ INDEX_TEMPLATE_ARGUMENTS
 class BPlusTreeInternalPage : public BPlusTreePage {
 public:
 
+  BPlusTreeInternalPage() : BPlusTreePage() {};
   // must call initialize method after "create" a new node
   void Init(page_id_t page_id, page_id_t parent_id = INVALID_PAGE_ID, int max_size = INTERNAL_PAGE_SIZE);
 
@@ -66,7 +67,7 @@ private:
 
   void CopyFirstFrom(const MappingType &pair, BufferPoolManager *buffer_pool_manager);
 
-  int BinarySearch(const KeyType& key, const KeyComparator& comparator) const;
+  int BinarySearchNode(const KeyType& key, const KeyComparator& comparator) const;
 
   MappingType array_[0];
 };

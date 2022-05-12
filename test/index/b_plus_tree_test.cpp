@@ -33,12 +33,20 @@ TEST(BPlusTreeTests, SampleTest) {
     kv_map[keys[i]] = values[i];
   }
   // Insert data
-  for (int i = 0; i < n; i++) {
+  for (int i = 0; i <= 6; i++) {
+    LOG(INFO)<<"key: "<<keys[i]<<" value: "<<values[i]<<" at: "<<i;
+    tree.Insert(keys[i], values[i]);
+  }
+
+  for(int i=7; i<n; i++){
+    LOG(INFO)<<"key: "<<keys[i]<<" value: "<<values[i]<<" at: "<<i;
     tree.Insert(keys[i], values[i]);
   }
   ASSERT_TRUE(tree.Check());
   // Print tree
-  tree.PrintTree(mgr[0]);
+  std::cout<<">>>>>>>>>>>>>>>The Tree<<<<<<<<<<<<<"<<std::endl;
+  tree.PrintTree(std::cout);
+  std::cout<<">>>>>>>>>>>>>>>The Tree<<<<<<<<<<<<<"<<std::endl;
   // Search keys
   vector<int> ans;
   for (int i = 0; i < n; i++) {

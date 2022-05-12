@@ -59,9 +59,9 @@ class BPlusTree {
   // destroy the b plus tree
   void Destroy();
 
-  void Destroy(BPlusTreePage* node);
+  void Destroy(BPlusTreePage *node);
 
-  void PrintTree(std::ofstream &out) {
+  void PrintTree(std::ostream &out) {
     if (IsEmpty()) {
       return;
     }
@@ -84,11 +84,14 @@ class BPlusTree {
   N *Split(N *node);
 
   template <typename N>
+  void AssignBrother(N *&left, N *&right, InternalPage *&parent, int &index);
+
+  template <typename N>
   bool CoalesceOrRedistribute(N *node, Transaction *transaction = nullptr);
 
   template <typename N>
-  bool Coalesce(N **neighbor_node, N **node, BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> **parent,
-                int index, Transaction *transaction = nullptr);
+  bool Coalesce(N *neighbor_node, N *node, BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *parent, int index,
+                Transaction *transaction = nullptr);
 
   template <typename N>
   void Redistribute(N *neighbor_node, N *node, int index);
@@ -98,7 +101,7 @@ class BPlusTree {
   void UpdateRootPageId(int insert_record = 0);
 
   /* Debug Routines for FREE!! */
-  void ToGraph(BPlusTreePage *page, BufferPoolManager *bpm, std::ofstream &out) const;
+  void ToGraph(BPlusTreePage *page, BufferPoolManager *bpm, std::ostream &out) const;
 
   void ToString(BPlusTreePage *page, BufferPoolManager *bpm) const;
 
@@ -109,6 +112,7 @@ class BPlusTree {
   KeyComparator comparator_;
   int leaf_max_size_;
   int internal_max_size_;
+
 };
 
 #endif  // MINISQL_B_PLUS_TREE_H

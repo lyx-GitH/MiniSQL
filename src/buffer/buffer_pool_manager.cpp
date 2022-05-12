@@ -20,6 +20,7 @@ BufferPoolManager::~BufferPoolManager() {
 }
 
 Page *BufferPoolManager::FetchPage(page_id_t page_id) {
+//  LOG(INFO)<<"Fetch: "<<page_id;
   // 1.     Search the page table for the requested page (P).
 
   //  auto map_it = page_table_.begin();
@@ -95,6 +96,7 @@ Page *BufferPoolManager::FetchPage(page_id_t page_id) {
 }
 
 Page *BufferPoolManager::NewPage(page_id_t &page_id) {
+//  LOG(INFO) << "New";
   // 0.   Make sure you call AllocatePage!
   frame_id_t frame_id;  // frame id of P
 
