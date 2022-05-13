@@ -101,11 +101,10 @@ INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
   auto page_id = INVALID_PAGE_ID;
   auto page = buffer_pool_manager_->NewPage(page_id);
-  if (page == nullptr){
-    LOG(ERROR) <<"Null Page";
+  if (page == nullptr) {
+    LOG(ERROR) << "Null Page";
     throw std::bad_alloc();
   }
-
 
   root_page_id_ = page_id;
   auto RootPage = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(page->GetData());
@@ -146,6 +145,7 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
     /*
      * {-Left- | Right}  ==>  {-Left-}->{Right}
      */
+    //    LOG(INFO)<<"To BE Split: "<<target_leaf->GetPageId() <<" "<<target_leaf->GetParentPageId();
     LeafPage *r_page = Split(target_leaf);
     ASSERT(r_page->IsLeafPage(), "r_page is not a leaf");
     auto middle_key = r_page->KeyAt(0);
@@ -166,14 +166,16 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
 INDEX_TEMPLATE_ARGUMENTS
 template <typename N>
 N *BPLUSTREE_TYPE::Split(N *node) {
+  //  LOG(INFO) << "node's parent and id" <<node->GetParentPageId()<<" "<<node->GetPageId()<<std::endl;
   bool isLeaf = IS_LEAF(node);
   auto new_page_id = INVALID_PAGE_ID;
   auto new_page = buffer_pool_manager_->NewPage(new_page_id);
-  if (new_page == nullptr){
-    LOG(ERROR)<<"Split: Null Page";
+  if (new_page == nullptr) {
+    LOG(ERROR) << "Split: Null Page";
     throw std::bad_alloc();
   }
   auto r_page = reinterpret_cast<N *>(new_page);
+  //  LOG(INFO) << "Split Assign";
   r_page->Init(new_page_id, node->GetParentPageId(), node->GetMaxSize());
   r_page->SetPageType(isLeaf ? IndexPageType::LEAF_PAGE : IndexPageType::INTERNAL_PAGE);
   if (isLeaf)
@@ -198,10 +200,11 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &mi
   ASSERT(old_node->GetParentPageId() == new_node->GetParentPageId(),
          "BPLUSTREE_TYPE::InsertIntoParent : Not Same Parent");
   const auto parent_id = old_node->GetParentPageId();
-//  auto middle_key = new_node->IsLeafPage() ? static_cast<LeafPage *>(new_node)->KeyAt(0)
-//                                           : static_cast<InternalPage *>(new_node)->KeyAt(0);
+  //  LOG(INFO) <<"parent_id: "<<parent_id<<std::endl;
+  //  auto middle_key = new_node->IsLeafPage() ? static_cast<LeafPage *>(new_node)->KeyAt(0)
+  //                                           : static_cast<InternalPage *>(new_node)->KeyAt(0);
 
-  if (parent_id == INVALID_PAGE_ID ||old_node->GetPageId() == root_page_id_) {
+  if (parent_id == INVALID_PAGE_ID || old_node->GetPageId() == root_page_id_) {
     // No parent. i.e. Root is Split.
     auto new_root_id = INVALID_PAGE_ID;
     auto root_page_raw = buffer_pool_manager_->NewPage(new_root_id);
@@ -222,6 +225,7 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &mi
     auto page = buffer_pool_manager_->FetchPage(parent_id);
     ASSERT(page != nullptr, "BPLUSTREE_TYPE::InsertIntoParent : Invalid Parent");
     auto target_int_node = reinterpret_cast<InternalPage *>(page->GetData());
+    //    target_int_node->SetPageType(IndexPageType::INTERNAL_PAGE);
     ASSERT(!target_int_node->IsLeafPage(), "BPLUSTREE_TYPE::InsertIntoParent : Not a leaf page");
     target_int_node->InsertNodeAfter(old_node->GetPageId(), middle_key, new_node->GetPageId());
     if (target_int_node->GetSize() > target_int_node->GetMaxSize()) {
@@ -229,7 +233,7 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &mi
       InternalPage *r_page = Split(target_int_node);
       auto new_middle_key = r_page->KeyAt(0);
       InsertIntoParent(target_int_node, new_middle_key, r_page);
-      buffer_pool_manager_->UnpinPage(target_int_node->GetPageId(), true);
+      buffer_pool_manager_->UnpinPage(r_page->GetPageId(), true);
     }
     // No Split
     buffer_pool_manager_->UnpinPage(target_int_node->GetPageId(), true);
@@ -451,27 +455,15 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::End() { return INDEXITERATOR_TYPE(); }
 INDEX_TEMPLATE_ARGUMENTS
 Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost) {
   if (IsEmpty()) return nullptr;
-  auto cur_page_id = root_page_id_;
-  auto cur_page = buffer_pool_manager_->FetchPage(cur_page_id);
-  BPlusTreePage *cur_b_page = nullptr;
-
-  InternalPage *cur_internal_page = nullptr;
-
-  ASSERT(cur_page != nullptr, "BPLUSTREE_TYPE::GetValue : Invalid Page");
-
-  while (true) {
-    cur_b_page = reinterpret_cast<BPlusTreePage *>(cur_page->GetData());
-    if (cur_b_page->IsLeafPage()) break;
-    cur_internal_page = reinterpret_cast<InternalPage *>(cur_page->GetData());
-    auto value = leftMost ? cur_internal_page->ValueAt(0) : cur_internal_page->Lookup(key, comparator_);
-    cur_page_id = *(reinterpret_cast<page_id_t *>(&value));
-    buffer_pool_manager_->UnpinPage(cur_b_page->GetPageId(), false);
-    cur_page = buffer_pool_manager_->FetchPage(cur_page_id);
+  auto cur_page = buffer_pool_manager_->FetchPage(root_page_id_);
+  while (cur_page != nullptr && TO_TYPE(BPlusTreePage *, cur_page->GetData())->IsLeafPage() == false) {
+    auto target_int_page = TO_TYPE(InternalPage *, cur_page->GetData());
+    ASSERT(target_int_page->IsLeafPage() == false, "Not A InternalPage");
+    auto next_index = target_int_page->Lookup(key, comparator_);
+    buffer_pool_manager_->UnpinPage(target_int_page->GetPageId(), false);
+    cur_page = buffer_pool_manager_->FetchPage(next_index);
   }
 
-  ASSERT(cur_page != nullptr && cur_b_page != nullptr && cur_b_page->IsLeafPage(),
-         "BPLUSTREE_TYPE::GetValue : Invalid Page : Leaf Unreached");
-  //  target_leaf = reinterpret_cast<BPlusTreeLeafPage<KeyType, ValueType, KeyComparator> *>(cur_page->GetData());
   return cur_page;
 }
 

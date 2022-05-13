@@ -19,6 +19,8 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Init(page_id_t page_id, page_id_t parent_id
   BPlusTreePage::SetParentPageId(parent_id);
   BPlusTreePage::SetPageId(page_id);
   BPlusTreePage::SetMaxSize(max_size);
+  //  LOG(INFO) << "Internal_init. "
+  //            << "id: " << page_id << " parent: " << parent_id << std::endl;
 }
 /*
  * Helper method to get/set the key associated with input "index"(a.k.a
@@ -69,9 +71,13 @@ ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueAt(int index) const {
 INDEX_TEMPLATE_ARGUMENTS
 ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::Lookup(const KeyType &key, const KeyComparator &comparator) const {
   // replace with your own code
-
-  auto index = BinarySearchNode(key, comparator);
-  return array_[index].second;
+  auto pos = BinarySearchNode(key, comparator);
+  if (pos >= GetSize())
+    return array_[GetSize() - 1].second;
+  else if (comparator(array_[pos].first, key) == 0)
+    return array_[pos].second;
+  else
+    return array_[pos - 1].second;
 }
 
 /*****************************************************************************
@@ -100,14 +106,13 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::PopulateNewRoot(const ValueType &old_value,
 INDEX_TEMPLATE_ARGUMENTS
 int B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertNodeAfter(const ValueType &old_value, const KeyType &new_key,
                                                     const ValueType &new_value) {
-  int i=0;
-  for(; i<GetSize(); i++)
-    if(old_value == array_[i].second)
-      break ;
-  for(int j = GetSize(); j>i+1; j--) {
-    array_[j] = array_[j-1];
+  int i = 0;
+  for (; i < GetSize(); i++)
+    if (old_value == array_[i].second) break;
+  for (int j = GetSize(); j > i + 1; j--) {
+    array_[j] = array_[j - 1];
   }
-  array_[i+1] = std::make_pair(new_key, new_value);
+  array_[i + 1] = std::make_pair(new_key, new_value);
   BPlusTreePage::IncreaseSize(1);
   return BPlusTreePage::GetSize();
 }
@@ -126,6 +131,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveHalfTo(BPlusTreeInternalPage *recipient
     recipient->CopyLastFrom(array_[i], buffer_pool_manager);
   }
   SetSize(half_index);
+  recipient->SetParentPageId(GetParentPageId());
 }
 
 /* Copy entries into me, starting from {items} and copy {size} entries.
@@ -253,22 +259,24 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyFirstFrom(const MappingType &pair, Buff
 
 INDEX_TEMPLATE_ARGUMENTS
 int B_PLUS_TREE_INTERNAL_PAGE_TYPE::BinarySearchNode(const KeyType &key, const KeyComparator &comparator) const {
-  int low = 1, high = BPlusTreePage::GetSize() - 1;
-  if (comparator(key, array_[high].first) > 0) {
-    // key is larger than the max element
-    return high + 1;
-  }
-  while (high > low) {
-    int mid = (low + high) >> 1;
-    if (comparator(key, array_[mid].first) == 0) return mid;
-    if (comparator(key, array_[mid].first) > 0)
-      low = mid + 1;
+  if (GetSize() == 0)
+    return 0;
+
+  int left = 0;
+  int right = GetSize()- 1;
+
+  while (left <= right) {
+    int mid = left + (right - left) / 2;
+    auto &mid_data = array_[mid].first;
+    if (comparator(mid_data,key) == 0)
+      return mid;
+    else if (comparator(mid_data, key) < 0)
+      left = mid + 1;
     else
-      high = mid - 1;
+      right = mid - 1;
   }
 
-  auto index = (comparator(key, array_[low].first) > 0) ? (low + 1) : low;
-  return index - 1;
+  return left;
 }
 
 template class BPlusTreeInternalPage<int, int, BasicComparator<int>>;

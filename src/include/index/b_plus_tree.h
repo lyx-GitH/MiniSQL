@@ -61,6 +61,14 @@ class BPlusTree {
 
   void Destroy(BPlusTreePage *node);
 
+  void OutputTree() {
+    if(IsEmpty())
+      return;
+    Page *root_page = buffer_pool_manager_->FetchPage(root_page_id_);
+    BPlusTreePage *node = reinterpret_cast<BPlusTreePage *>(root_page);
+    ToString(node, buffer_pool_manager_);
+  }
+
   void PrintTree(std::ostream &out) {
     if (IsEmpty()) {
       return;
@@ -102,6 +110,8 @@ class BPlusTree {
 
   /* Debug Routines for FREE!! */
   void ToGraph(BPlusTreePage *page, BufferPoolManager *bpm, std::ostream &out) const;
+
+
 
   void ToString(BPlusTreePage *page, BufferPoolManager *bpm) const;
 

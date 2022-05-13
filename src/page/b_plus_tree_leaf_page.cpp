@@ -20,6 +20,7 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::Init(page_id_t page_id, page_id_t parent_id, in
   BPlusTreePage::SetMaxSize(max_size);
   BPlusTreePage::SetSize(0);
   next_page_id_ = INVALID_PAGE_ID;
+//  LOG(INFO) <<"Leaf Init. "<<"id: "<<page_id<<" parent: "<<parent_id<<std::endl;
 }
 
 /**
@@ -105,6 +106,7 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::MoveHalfTo(BPlusTreeLeafPage *recipient) {
   recipient->next_page_id_ = next_page_id_;
   next_page_id_ = recipient->GetPageId();
   BPlusTreePage::SetSize(half_index);
+  recipient->SetParentPageId(GetParentPageId());
 
 }
 
@@ -222,21 +224,17 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::CopyFirstFrom(const MappingType &item) {
 
 INDEX_TEMPLATE_ARGUMENTS
 int B_PLUS_TREE_LEAF_PAGE_TYPE::BinarySearch(const KeyType &key, const KeyComparator &comparator) const {
-  int low = 0, high = BPlusTreePage::GetSize() - 1;
-  if (comparator(key, array_[high].first) > 0) {
-    // key is larger than the max element
-    return high + 1;
+  int left = 0, right =GetSize() -1;
+  while(left <= right){
+    int mid = (left + right ) >> 1;
+    if(comparator(array_[mid].first, key) > 0)
+      right = mid -1;
+    else if(comparator(array_[mid].first, key) < 0)
+      left = mid +1;
+    else return mid;
   }
-  while (high > low) {
-    int mid = (low + high) >> 1;
-    if (comparator(key, array_[mid].first) == 0) return mid;
-    if (comparator(key, array_[mid].first) > 0)
-      low = mid + 1;
-    else
-      high = mid - 1;
-  }
+  return right + 1;
 
-  return (comparator(key, array_[low].first) > 0) ? (low + 1) : low;
 }
 
 template class BPlusTreeLeafPage<int, int, BasicComparator<int>>;
