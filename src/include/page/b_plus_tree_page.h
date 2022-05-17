@@ -5,6 +5,7 @@
 #include <climits>
 #include <cstdlib>
 #include <string>
+#include <cmath>
 #include "buffer/buffer_pool_manager.h"
 
 #define MappingType std::pair<KeyType, ValueType>

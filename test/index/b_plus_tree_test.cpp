@@ -11,10 +11,11 @@ TEST(BPlusTreeTests, SampleTest) {
   // Init engine
   DBStorageEngine engine(db_name);
   BasicComparator<int> comparator;
-  BPlusTree<int, int, BasicComparator<int>> tree(0, engine.bpm_, comparator, 4, 4);
-  TreeFileManagers mgr("tree_");
+  BPlusTree<int, int, BasicComparator<int>> tree(0, engine.bpm_, comparator, 7, 7);
+  TreeFileManagers mbr("tree_");
   // Prepare data
-  const int n = 197;
+  const int n = 60;
+  const int removed = n>>1;
   vector<int> keys;
   vector<int> values;
   vector<int> delete_seq;
@@ -43,10 +44,8 @@ TEST(BPlusTreeTests, SampleTest) {
     tree.Insert(keys[i], values[i]);
   }
 
-  // Print tree
-  std::cout<<">>>>>>>>>>>>>>>The Tree<<<<<<<<<<<<<"<<std::endl;
-  tree.PrintTree(std::cout);
-  std::cout<<">>>>>>>>>>>>>>>The Tree<<<<<<<<<<<<<"<<std::endl;
+//  tree.PrintTree(std::cout);
+  tree.printOut();
 
   ASSERT_TRUE(tree.Check());
   // Search keys
@@ -56,18 +55,36 @@ TEST(BPlusTreeTests, SampleTest) {
     ASSERT_EQ(kv_map[i], ans[i]);
   }
   ASSERT_TRUE(tree.Check());
+
+  std::cout<<"Insert Over"<<std::endl;
+
   // Delete half keys
-//  for (int i = 0; i < n / 2; i++) {
-//    tree.Remove(delete_seq[i]);
-//  }
-//  tree.PrintTree(mgr[1]);
-//  // Check valid
-//  ans.clear();
-//  for (int i = 0; i < n / 2; i++) {
-//    ASSERT_FALSE(tree.GetValue(delete_seq[i], ans));
-//  }
-//  for (int i = n / 2; i < n; i++) {
-//    ASSERT_TRUE(tree.GetValue(delete_seq[i], ans));
-//    ASSERT_EQ(kv_map[delete_seq[i]], ans[ans.size() - 1]);
-//  }
+
+  // Print tree
+
+
+  for(int i=0; i< removed; i++){
+    std::cout <<"================="<<std::endl;
+    std::cout <<"At : "<<i<< " del: "<<delete_seq[i]<<std::endl;
+    tree.Remove(delete_seq[i]);
+
+    tree.printOut();
+    tree.printOut(true);
+    std::cout <<"================="<<std::endl;
+  }
+
+
+
+  std::cout <<"================="<<std::endl;
+  tree.PrintTree(std::cout);
+  // Check valid
+  ans.clear();
+  for (int i = 0; i < removed; i++) {
+    ASSERT_FALSE(tree.GetValue(delete_seq[i], ans));
+  }
+  for (int i = removed; i < n; i++) {
+//    LOG(INFO)<<"Getting: "<<delete_seq[i];
+    ASSERT_TRUE(tree.GetValue(delete_seq[i], ans));
+    ASSERT_EQ(kv_map[delete_seq[i]], ans[ans.size() - 1]);
+  }
 }

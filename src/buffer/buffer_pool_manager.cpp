@@ -138,6 +138,7 @@ Page *BufferPoolManager::NewPage(page_id_t &page_id) {
 }
 
 bool BufferPoolManager::DeletePage(page_id_t page_id) {
+  std::cout << "Del Node: "<<page_id<<std::endl;
   // 0.   Make sure you call DeallocatePage!
   // 1.   Search the page table for the requested page (P).
   auto map_it1 = page_table_.find(page_id);

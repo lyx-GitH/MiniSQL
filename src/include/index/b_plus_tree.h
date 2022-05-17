@@ -10,6 +10,7 @@
 #include "page/b_plus_tree_leaf_page.h"
 #include "page/b_plus_tree_page.h"
 #include "transaction/transaction.h"
+#include "queue"
 
 #define BPLUSTREE_TYPE BPlusTree<KeyType, ValueType, KeyComparator>
 
@@ -29,6 +30,8 @@ class BPlusTree {
   using LeafPage = BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>;
 
  public:
+  static std::list<page_id_t> deleted_pages;
+
   explicit BPlusTree(index_id_t index_id, BufferPoolManager *buffer_pool_manager, const KeyComparator &comparator,
                      int leaf_max_size = LEAF_PAGE_SIZE, int internal_max_size = INTERNAL_PAGE_SIZE);
 
@@ -80,6 +83,8 @@ class BPlusTree {
     out << "}" << std::endl;
   }
 
+  void printOut(bool All = false);
+
  private:
   void StartNewTree(const KeyType &key, const ValueType &value);
 
@@ -92,7 +97,7 @@ class BPlusTree {
   N *Split(N *node);
 
   template <typename N>
-  void AssignBrother(N *&left, N *&right, InternalPage *&parent, int &index);
+  void AssignBrother(N *left, N *&right, InternalPage *&parent, int &index);
 
   template <typename N>
   bool CoalesceOrRedistribute(N *node, Transaction *transaction = nullptr);
@@ -100,6 +105,7 @@ class BPlusTree {
   template <typename N>
   bool Coalesce(N *neighbor_node, N *node, BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *parent, int index,
                 Transaction *transaction = nullptr);
+
 
   template <typename N>
   void Redistribute(N *neighbor_node, N *node, int index);
@@ -110,6 +116,46 @@ class BPlusTree {
 
   /* Debug Routines for FREE!! */
   void ToGraph(BPlusTreePage *page, BufferPoolManager *bpm, std::ostream &out) const;
+
+
+
+  template <typename N>
+  void printNode(N* node, bool All = false) {
+    if(!node) {
+      std::cout << "(NULL NODE)";
+      return;
+    }
+
+    auto size = node->GetSize();
+  if(All) {
+    if (node->IsLeafPage()) {
+      std::cout << '{';
+      for (int i = 0; i < size - 1; i++) std::cout << node->KeyAt(i) << ", ";
+      std::cout << node->KeyAt(size - 1) << "}";
+    } else {
+      std::cout << '[';
+      for (int i = 0; i < size - 1; i++) {
+        if (i == 0) {
+          std::cout << '*' << node->KeyAt(0) << '*' << ", ";
+        } else
+          std::cout << node->KeyAt(i) << ", ";
+      }
+      std::cout << node->KeyAt(size - 1) << ']';
+    }
+  }else {
+    if (node->IsLeafPage()) {
+      std::cout << '{'<<node->GetParentPageId() <<'|';
+      for (int i = 0; i < size - 1; i++) std::cout << "X" << ", ";
+      std::cout << "X" << '|' <<node->GetPageId()<<"}";
+    } else {
+      std::cout << '['<<node->GetParentPageId() <<'|';
+      for (int i = 0; i < size - 1; i++) {
+        std::cout << (reinterpret_cast<InternalPage*>(node))->ValueAt(i) << ", ";
+      }
+      std::cout << (reinterpret_cast<InternalPage*>(node))->ValueAt(size -1 ) <<'|'<<node->GetPageId()<< ']';
+    }
+  }
+  }
 
 
 

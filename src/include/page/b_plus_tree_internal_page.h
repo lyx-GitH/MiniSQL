@@ -45,6 +45,8 @@ public:
 
   int InsertNodeAfter(const ValueType &old_value, const KeyType &new_key, const ValueType &new_value);
 
+  int LookUpIndex(const KeyType &key, const KeyComparator &comparator) const;
+
   void Remove(int index);
 
   ValueType RemoveAndReturnOnlyChild();
