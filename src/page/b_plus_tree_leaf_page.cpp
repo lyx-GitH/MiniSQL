@@ -50,9 +50,10 @@ KeyType B_PLUS_TREE_LEAF_PAGE_TYPE::KeyAt(int index) const {
   // replace with your own code
   //  KeyType key{};
   //  return key;
-//  ASSERT(index >= 0 && index < BPlusTreePage::GetSize(), "B_PLUS_TREE_LEAF_PAGE_TYPE::KeyAt : Invalid Index");
-  if(index <0 && index > GetSize()){
-    LOG(ERROR) <<"index: "<<index <<" "<<"Size: "<<GetSize();
+  //  ASSERT(index >= 0 && index < BPlusTreePage::GetSize(), "B_PLUS_TREE_LEAF_PAGE_TYPE::KeyAt : Invalid Index");
+  if (index < 0 && index > GetSize()) {
+    LOG(ERROR) << "index: " << index << " "
+               << "Size: " << GetSize();
   }
 
   return array_[index].first;
@@ -86,8 +87,8 @@ int B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, const ValueType &valu
   }
 
   auto insert_place = BinarySearch(key, comparator);
-  ASSERT(insert_place >= GetSize() || comparator(key, array_[insert_place].first) <= 0, "Wrong Insert Place");
-  if (comparator(array_[insert_place].first, key) == 0) return -1;
+//  ASSERT(insert_place > GetSize() || comparator(key, array_[insert_place].first) <= 0, "Wrong Insert Place");
+  if (insert_place < GetSize() && comparator(array_[insert_place].first, key) == 0) return -1;
   for (int i = size - 1; i >= insert_place; i--) array_[i + 1] = array_[i];
   array_[insert_place] = MappingType(key, value);
   IncreaseSize(1);

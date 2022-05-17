@@ -9,8 +9,8 @@
 #include "page/b_plus_tree_internal_page.h"
 #include "page/b_plus_tree_leaf_page.h"
 #include "page/b_plus_tree_page.h"
-#include "transaction/transaction.h"
 #include "queue"
+#include "transaction/transaction.h"
 
 #define BPLUSTREE_TYPE BPlusTree<KeyType, ValueType, KeyComparator>
 
@@ -65,8 +65,7 @@ class BPlusTree {
   void Destroy(BPlusTreePage *node);
 
   void OutputTree() {
-    if(IsEmpty())
-      return;
+    if (IsEmpty()) return;
     Page *root_page = buffer_pool_manager_->FetchPage(root_page_id_);
     BPlusTreePage *node = reinterpret_cast<BPlusTreePage *>(root_page);
     ToString(node, buffer_pool_manager_);
@@ -106,7 +105,6 @@ class BPlusTree {
   bool Coalesce(N *neighbor_node, N *node, BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *parent, int index,
                 Transaction *transaction = nullptr);
 
-
   template <typename N>
   void Redistribute(N *neighbor_node, N *node, int index);
 
@@ -117,47 +115,45 @@ class BPlusTree {
   /* Debug Routines for FREE!! */
   void ToGraph(BPlusTreePage *page, BufferPoolManager *bpm, std::ostream &out) const;
 
-
-
   template <typename N>
-  void printNode(N* node, bool All = false) {
-    if(!node) {
+  void printNode(N *node, bool All = false) {
+    if (!node) {
       std::cout << "(NULL NODE)";
       return;
     }
 
     auto size = node->GetSize();
-  if(All) {
-    if (node->IsLeafPage()) {
-      std::cout << '{';
-      for (int i = 0; i < size - 1; i++) std::cout << node->KeyAt(i) << ", ";
-      std::cout << node->KeyAt(size - 1) << "}";
-    } else {
-      std::cout << '[';
-      for (int i = 0; i < size - 1; i++) {
-        if (i == 0) {
-          std::cout << '*' << node->KeyAt(0) << '*' << ", ";
-        } else
-          std::cout << node->KeyAt(i) << ", ";
+    if (All) {
+      if (node->IsLeafPage()) {
+        std::cout << '{';
+        for (int i = 0; i < size - 1; i++) std::cout << node->KeyAt(i) << ", ";
+        std::cout << node->KeyAt(size - 1) << "}";
+      } else {
+        std::cout << '[';
+        for (int i = 0; i < size - 1; i++) {
+          if (i == 0) {
+            std::cout << '*' << node->KeyAt(0) << '*' << ", ";
+          } else
+            std::cout << node->KeyAt(i) << ", ";
+        }
+        std::cout << node->KeyAt(size - 1) << ']';
       }
-      std::cout << node->KeyAt(size - 1) << ']';
-    }
-  }else {
-    if (node->IsLeafPage()) {
-      std::cout << '{'<<node->GetParentPageId() <<'|';
-      for (int i = 0; i < size - 1; i++) std::cout << "X" << ", ";
-      std::cout << "X" << '|' <<node->GetPageId()<<"}";
     } else {
-      std::cout << '['<<node->GetParentPageId() <<'|';
-      for (int i = 0; i < size - 1; i++) {
-        std::cout << (reinterpret_cast<InternalPage*>(node))->ValueAt(i) << ", ";
+      if (node->IsLeafPage()) {
+        std::cout << '{' << node->GetParentPageId() << '|';
+        for (int i = 0; i < size - 1; i++)
+          std::cout << "X"
+                    << ", ";
+        std::cout << "X" << '|' << node->GetPageId() << "}";
+      } else {
+        std::cout << '[' << node->GetParentPageId() << '|';
+        for (int i = 0; i < size - 1; i++) {
+          std::cout << (reinterpret_cast<InternalPage *>(node))->ValueAt(i) << ", ";
+        }
+        std::cout << (reinterpret_cast<InternalPage *>(node))->ValueAt(size - 1) << '|' << node->GetPageId() << ']';
       }
-      std::cout << (reinterpret_cast<InternalPage*>(node))->ValueAt(size -1 ) <<'|'<<node->GetPageId()<< ']';
     }
   }
-  }
-
-
 
   void ToString(BPlusTreePage *page, BufferPoolManager *bpm) const;
 
@@ -168,7 +164,6 @@ class BPlusTree {
   KeyComparator comparator_;
   int leaf_max_size_;
   int internal_max_size_;
-
 };
 
 #endif  // MINISQL_B_PLUS_TREE_H

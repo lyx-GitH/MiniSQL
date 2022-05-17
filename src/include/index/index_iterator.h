@@ -12,7 +12,7 @@ public:
   // you may define your own constructor based on your member variables
   explicit IndexIterator();
 
-  IndexIterator(BufferPoolManager* _bpm, BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>* _p);
+  IndexIterator(BufferPoolManager* _manager, const page_id_t& leaf_id);
 
   ~IndexIterator();
 
@@ -29,10 +29,10 @@ public:
   bool operator!=(const IndexIterator &itr) const;
 
 private:
- BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>* ThisBPage;
- int index;
- BufferPoolManager* ThisManager;
- MappingType* ThisPair;
+ MappingType *data;
+ BufferPoolManager* manager;
+ int cur_leaf_id;
+ int leaf_index;
   // add your own private member variables here
 };
 

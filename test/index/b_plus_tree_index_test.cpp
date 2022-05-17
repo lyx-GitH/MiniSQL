@@ -71,6 +71,7 @@ TEST(BPlusTreeTests, BPlusTreeIndexSimpleTest) {
     ASSERT_EQ(DB_SUCCESS, index->ScanKey(row, ret, nullptr));
     ASSERT_EQ(rid.Get(), ret[i].Get());
   }
+  LOG(INFO) <<"Except Iter is passed";
   // Iterator Scan
   IndexIterator<INDEX_KEY_TYPE, RowId, INDEX_COMPARATOR_TYPE> iter = index->GetBeginIterator();
   uint32_t i = 0;
