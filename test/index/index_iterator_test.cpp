@@ -17,6 +17,8 @@ TEST(BPlusTreeTests, IndexIteratorTest) {
   for (int i = 2; i <= 50; i += 2) {
     tree.Remove(i);
   }
+  tree.printOut(true);
+
   // Search keys
   vector<int> v;
   for (int i = 2; i <= 50; i += 2) {

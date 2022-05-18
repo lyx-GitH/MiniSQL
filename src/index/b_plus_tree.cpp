@@ -204,7 +204,6 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &mi
          "BPLUSTREE_TYPE::InsertIntoParent : Not Same Parent");
   const auto parent_id = old_node->GetParentPageId();
 
-
   if (parent_id == INVALID_PAGE_ID || old_node->GetPageId() == root_page_id_) {
     // No parent. i.e. Root is Split.
     auto new_root_id = INVALID_PAGE_ID;
@@ -358,7 +357,7 @@ template <typename N>
 bool BPLUSTREE_TYPE::Coalesce(N *node, N *sib, BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *parent,
                               int index, Transaction *transaction) {
   // node is the less leaf.
-  //std::cout << "Col" << node->GetPageId() << " " << sib->GetPageId() << " " << parent->GetPageId() << std::endl;
+  // std::cout << "Col" << node->GetPageId() << " " << sib->GetPageId() << " " << parent->GetPageId() << std::endl;
   bool rm_node = false;
 
   ASSERT(parent != nullptr, "Emoty Parent");
@@ -426,9 +425,9 @@ bool BPLUSTREE_TYPE::Coalesce(N *node, N *sib, BPlusTreeInternalPage<KeyType, pa
 INDEX_TEMPLATE_ARGUMENTS
 template <typename N>
 void BPLUSTREE_TYPE::Redistribute(N *node, N *sib, int index) {
-  //std::cout << "Re" << std::endl;
-  // node is the less leaf
-  //  index = 0, sib is the right sib
+  // std::cout << "Re" << std::endl;
+  //  node is the less leaf
+  //   index = 0, sib is the right sib
   ASSERT(node->GetParentPageId() == sib->GetParentPageId(), "BPLUSTREE_TYPE::Redistribute : Not Sibling");
   auto parent_page = TO_TYPE(InternalPage *, buffer_pool_manager_->FetchPage(node->GetParentPageId())->GetData());
 
@@ -487,7 +486,14 @@ bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) { return true; }
  * @return : index iterator
  */
 INDEX_TEMPLATE_ARGUMENTS
-INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin() { return INDEXITERATOR_TYPE(); }
+INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin() {
+  if (IsEmpty()) return End();
+
+  auto left_most_page = FindLeafPage(KeyType{}, true);
+  ASSERT(left_most_page != nullptr, "Null Left Leaf");
+  buffer_pool_manager_->UnpinPage(left_most_page->GetPageId(), false);
+  return INDEXITERATOR_TYPE(buffer_pool_manager_, left_most_page->GetPageId());
+}
 
 /*
  * Input parameter is low key, find the leaf page that contains the input key
@@ -495,7 +501,16 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin() { return INDEXITERATOR_TYPE(); }
  * @return : index iterator
  */
 INDEX_TEMPLATE_ARGUMENTS
-INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin(const KeyType &key) { return INDEXITERATOR_TYPE(); }
+INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin(const KeyType &key) {
+  auto leaf_page = FindLeafPage(key);
+  if (!leaf_page) return End();
+  ValueType v{};
+  auto exists = TO_TYPE(LeafPage*, leaf_page->GetData())->Lookup(key, v, comparator_);
+  if(exists)
+    return INDEXITERATOR_TYPE(buffer_pool_manager_, leaf_page->GetPageId());
+  else return End();
+
+}
 
 /*
  * Input parameter is void, construct an index iterator representing the end

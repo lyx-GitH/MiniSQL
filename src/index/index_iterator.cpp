@@ -15,15 +15,37 @@ INDEXITERATOR_TYPE::IndexIterator(BufferPoolManager *_manager, const page_id_t &
     leaf_index = INVALID_PAGE_ID;
   } else {
     leaf_index = 0;
-    data = new MappingType();
+    data = std::shared_ptr<MappingType>(new MappingType());
     *data = leaf->GetItem(leaf_index);
     manager->UnpinPage(cur_leaf_id, false);
   }
 }
 
-INDEX_TEMPLATE_ARGUMENTS INDEXITERATOR_TYPE::~IndexIterator() {
-  if (data != nullptr) delete data;
+INDEX_TEMPLATE_ARGUMENTS
+INDEXITERATOR_TYPE::IndexIterator(BufferPoolManager *_manager, const page_id_t &leaf_id, const page_id_t &pair_id)
+    : manager(_manager), cur_leaf_id(leaf_id), leaf_index(pair_id) {
+  auto leaf =
+      reinterpret_cast<BPlusTreeLeafPage<KeyType, ValueType, KeyComparator> *>(manager->FetchPage(leaf_id)->GetData());
+  if (leaf == nullptr || leaf_index < 0 || leaf_index >= leaf->GetSize()) {
+    cur_leaf_id = INVALID_PAGE_ID;
+    leaf_index = INVALID_PAGE_ID;
+  } else {
+    data = std::shared_ptr<MappingType>(new MappingType);
+    *data = leaf->GetItem(leaf_index);
+    manager->UnpinPage(cur_leaf_id, false);
+  }
 }
+INDEX_TEMPLATE_ARGUMENTS INDEXITERATOR_TYPE::IndexIterator(IndexIterator &&rhs) {
+  if (&rhs != this) {
+    this->manager = rhs.manager;
+    this->cur_leaf_id = rhs.cur_leaf_id;
+    this->leaf_index = rhs.leaf_index;
+    this->data = rhs.data;
+    rhs.data = nullptr;
+  }
+}
+
+INDEX_TEMPLATE_ARGUMENTS INDEXITERATOR_TYPE::~IndexIterator() {}
 
 INDEX_TEMPLATE_ARGUMENTS const MappingType &INDEXITERATOR_TYPE::operator*() { return *data; }
 
@@ -37,7 +59,7 @@ INDEX_TEMPLATE_ARGUMENTS INDEXITERATOR_TYPE &INDEXITERATOR_TYPE::operator++() {
   } else {
     cur_leaf_id = leaf_page->GetNextPageId();
     if (cur_leaf_id == INVALID_PAGE_ID) {
-      if (data != nullptr) delete data;
+      if (data != nullptr) data.reset();
       leaf_index = INVALID_PAGE_ID;
       return *this;
     }
