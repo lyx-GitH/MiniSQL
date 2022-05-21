@@ -7,14 +7,14 @@
 
 static const std::string db_name = "bp_tree_insert_test.db";
 
-//TEST(BPlusTreeTests, RemoveTest) {
-//  DBStorageEngine engine(db_name);
-//  BasicComparator<int> comparator;
-//  BPlusTree<int, int, BasicComparator<int>> tree(0, engine.bpm_, comparator, 4, 4);
-//  TreeFileManagers mbr("tree_");
+// TEST(BPlusTreeTests, RemoveTest) {
+//   DBStorageEngine engine(db_name);
+//   BasicComparator<int> comparator;
+//   BPlusTree<int, int, BasicComparator<int>> tree(0, engine.bpm_, comparator, 4, 4);
+//   TreeFileManagers mbr("tree_");
 //
-//  vector<int>  push;
-//  const int n = 60;
+//   vector<int>  push;
+//   const int n = 60;
 ////  for(int i=0; i<)
 //}
 
@@ -36,7 +36,7 @@ TEST(BPlusTreeTests, SampleTest) {
     values.push_back(i);
     delete_seq.push_back(i);
   }
-  //Shuffle data
+  // Shuffle data
   ShuffleArray(keys);
   ShuffleArray(values);
   ShuffleArray(delete_seq);
@@ -49,9 +49,6 @@ TEST(BPlusTreeTests, SampleTest) {
     tree.Insert(keys[i], values[i]);
   }
 
-  tree.printOut(true);
-  tree.printOut();
-
   ASSERT_TRUE(tree.Check());
   // Search keys
   vector<int> ans;
@@ -61,24 +58,14 @@ TEST(BPlusTreeTests, SampleTest) {
   }
   ASSERT_TRUE(tree.Check());
 
-  std::cout << "Insert Over" << std::endl;
-
   // Delete half keys
 
   // Print tree
-  tree.Foo();
 
   for (int i = 0; i < removed; i++) {
-    std::cout << "=================" << std::endl;
-    std::cout << "At : " << i << " del: " << delete_seq[i] << std::endl;
     tree.Remove(delete_seq[i]);
-
-    tree.printOut();
-    tree.printOut(true);
-    std::cout << "=================" << std::endl;
   }
 
-  std::cout << "=================" << std::endl;
   tree.PrintTree(std::cout);
   // Check valid
   ans.clear();

@@ -148,7 +148,6 @@ bool BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
     /*
      * {-Left- | Right}  ==>  {-Left-}->{Right}
      */
-    //    LOG(INFO)<<"To BE Split: "<<target_leaf->GetPageId() <<" "<<target_leaf->GetParentPageId();
     LeafPage *r_page = Split(target_leaf);
     ASSERT(r_page->IsLeafPage(), "r_page is not a leaf");
     auto middle_key = r_page->KeyAt(0);
@@ -178,7 +177,6 @@ N *BPLUSTREE_TYPE::Split(N *node) {
     throw std::bad_alloc();
   }
   auto r_page = reinterpret_cast<N *>(new_page);
-  //  LOG(INFO) << "Split Assign";
   r_page->Init(new_page_id, node->GetParentPageId(), node->GetMaxSize());
   r_page->SetPageType(isLeaf ? IndexPageType::LEAF_PAGE : IndexPageType::INTERNAL_PAGE);
   if (isLeaf)
@@ -239,15 +237,6 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &mi
   }
 }
 
-INDEX_TEMPLATE_ARGUMENTS
-void BPLUSTREE_TYPE::Foo() {
-    page_id_t  pid = -1;
-  auto page = buffer_pool_manager_->NewPage(pid);
-  ASSERT(page != nullptr && pid != -1, "ddd");
-  buffer_pool_manager_->UnpinPage(pid, true);
-  buffer_pool_manager_->DeletePage(pid);
-}
-
 /*****************************************************************************
  * REMOVE
  *****************************************************************************/
@@ -274,17 +263,10 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
     ASSERT(target_leaf->GetSize() == 0, "Delete Not Empty Page");
     deleted_pages.push_front(target_leaf->GetPageId());
   }
-  /*TODO:
-   * Here, if I delete *ANY* page, the root page is set to NULL.
-   * This needs to be FIXED.
-   */
-  // TODO: When this bug is fixed, Uncomment these codes to safe delete all the to-be-deleted nodes.
-     //bool root_is_dead = false;
-     for (auto id : deleted_pages) {
-        buffer_pool_manager_->DeletePage(id);
-        std::cout << "delete page: "<<id<<std::endl;
-     }
-     deleted_pages.clear();
+
+  for (auto id : deleted_pages) buffer_pool_manager_->DeletePage(id);
+
+  deleted_pages.clear();
 }
 
 /*
@@ -302,7 +284,6 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
 
   if (node->GetParentPageId() == INVALID_PAGE_ID) {
     ASSERT(node->GetPageId() == root_page_id_ && node->GetSize() == 1, "Unqualified root");
-    std::cout << "Update Root" << std::endl;
     if (node->IsLeafPage() == false) {
       root_page_id_ = TO_TYPE(InternalPage *, node)->RemoveAndReturnOnlyChild();
       auto new_root_page = TO_TYPE(BPlusTreePage *, buffer_pool_manager_->FetchPage(root_page_id_)->GetData());
@@ -367,7 +348,6 @@ template <typename N>
 bool BPLUSTREE_TYPE::Coalesce(N *node, N *sib, BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *parent,
                               int index, Transaction *transaction) {
   // node is the less leaf.
-  // std::cout << "Col" << node->GetPageId() << " " << sib->GetPageId() << " " << parent->GetPageId() << std::endl;
   bool rm_node = false;
 
   ASSERT(parent != nullptr, "Emoty Parent");
@@ -379,7 +359,6 @@ bool BPLUSTREE_TYPE::Coalesce(N *node, N *sib, BPlusTreeInternalPage<KeyType, pa
   if (node->IsLeafPage()) {
     if (index == 0)  //[node]->[sib] ====> [*node* | sib]
     {
-      std::cout << "Left Col" << std::endl;
       TO_TYPE(LeafPage *, sib)->MoveAllTo(TO_TYPE(LeafPage *, node));
       TO_TYPE(LeafPage *, node)->SetNextPageId(TO_TYPE(LeafPage *, sib)->GetNextPageId());
       parent->Remove(1);
@@ -402,7 +381,6 @@ bool BPLUSTREE_TYPE::Coalesce(N *node, N *sib, BPlusTreeInternalPage<KeyType, pa
       rm_node = true;
       parent->Remove(index);
       ASSERT(parent->ValueAt(index - 1) == sib->GetPageId(), "FAILED");
-      ASSERT(node->GetSize() == 0, "xxx");
     }
   }
 
@@ -435,7 +413,6 @@ bool BPLUSTREE_TYPE::Coalesce(N *node, N *sib, BPlusTreeInternalPage<KeyType, pa
 INDEX_TEMPLATE_ARGUMENTS
 template <typename N>
 void BPLUSTREE_TYPE::Redistribute(N *node, N *sib, int index) {
-  // std::cout << "Re" << std::endl;
   //  node is the less leaf
   //   index = 0, sib is the right sib
   ASSERT(node->GetParentPageId() == sib->GetParentPageId(), "BPLUSTREE_TYPE::Redistribute : Not Sibling");
@@ -515,11 +492,11 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin(const KeyType &key) {
   auto leaf_page = FindLeafPage(key);
   if (!leaf_page) return End();
   ValueType v{};
-  auto exists = TO_TYPE(LeafPage*, leaf_page->GetData())->Lookup(key, v, comparator_);
-  if(exists)
+  auto exists = TO_TYPE(LeafPage *, leaf_page->GetData())->Lookup(key, v, comparator_);
+  if (exists)
     return INDEXITERATOR_TYPE(buffer_pool_manager_, leaf_page->GetPageId());
-  else return End();
-
+  else
+    return End();
 }
 
 /*
