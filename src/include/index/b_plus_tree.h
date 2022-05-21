@@ -44,6 +44,7 @@ class BPlusTree {
   // Remove a key and its value from this B+ tree.
   void Remove(const KeyType &key, Transaction *transaction = nullptr);
 
+
   // return the value associated with a given key
   bool GetValue(const KeyType &key, std::vector<ValueType> &result, Transaction *transaction = nullptr);
 
@@ -82,7 +83,7 @@ class BPlusTree {
     out << "}" << std::endl;
   }
 
-  void printOut(bool All = false);
+  void printOut(bool All = false) ;
 
  private:
   void StartNewTree(const KeyType &key, const ValueType &value);

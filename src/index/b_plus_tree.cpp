@@ -239,6 +239,15 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &mi
   }
 }
 
+INDEX_TEMPLATE_ARGUMENTS
+void BPLUSTREE_TYPE::Foo() {
+    page_id_t  pid = -1;
+  auto page = buffer_pool_manager_->NewPage(pid);
+  ASSERT(page != nullptr && pid != -1, "ddd");
+  buffer_pool_manager_->UnpinPage(pid, true);
+  buffer_pool_manager_->DeletePage(pid);
+}
+
 /*****************************************************************************
  * REMOVE
  *****************************************************************************/
@@ -270,11 +279,12 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
    * This needs to be FIXED.
    */
   // TODO: When this bug is fixed, Uncomment these codes to safe delete all the to-be-deleted nodes.
-  //   bool root_is_dead = false;
-  //   for (auto id : deleted_pages) {
-  //      buffer_pool_manager_->DeletePage(id);
-  //   }
-  //   deleted_pages.clear();
+     //bool root_is_dead = false;
+     for (auto id : deleted_pages) {
+        buffer_pool_manager_->DeletePage(id);
+        std::cout << "delete page: "<<id<<std::endl;
+     }
+     deleted_pages.clear();
 }
 
 /*

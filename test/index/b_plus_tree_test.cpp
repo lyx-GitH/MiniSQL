@@ -7,6 +7,17 @@
 
 static const std::string db_name = "bp_tree_insert_test.db";
 
+//TEST(BPlusTreeTests, RemoveTest) {
+//  DBStorageEngine engine(db_name);
+//  BasicComparator<int> comparator;
+//  BPlusTree<int, int, BasicComparator<int>> tree(0, engine.bpm_, comparator, 4, 4);
+//  TreeFileManagers mbr("tree_");
+//
+//  vector<int>  push;
+//  const int n = 60;
+////  for(int i=0; i<)
+//}
+
 TEST(BPlusTreeTests, SampleTest) {
   // Init engine
   DBStorageEngine engine(db_name);
@@ -25,7 +36,7 @@ TEST(BPlusTreeTests, SampleTest) {
     values.push_back(i);
     delete_seq.push_back(i);
   }
-  // Shuffle data
+  //Shuffle data
   ShuffleArray(keys);
   ShuffleArray(values);
   ShuffleArray(delete_seq);
@@ -38,6 +49,7 @@ TEST(BPlusTreeTests, SampleTest) {
     tree.Insert(keys[i], values[i]);
   }
 
+  tree.printOut(true);
   tree.printOut();
 
   ASSERT_TRUE(tree.Check());
@@ -54,6 +66,7 @@ TEST(BPlusTreeTests, SampleTest) {
   // Delete half keys
 
   // Print tree
+  tree.Foo();
 
   for (int i = 0; i < removed; i++) {
     std::cout << "=================" << std::endl;
