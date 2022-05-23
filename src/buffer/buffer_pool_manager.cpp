@@ -20,9 +20,11 @@ BufferPoolManager::~BufferPoolManager() {
 }
 
 Page *BufferPoolManager::FetchPage(page_id_t page_id) {
+  if(page_id == INVALID_PAGE_ID)
+    return nullptr;
   auto map_it = page_table_.find(page_id);
 
-  if (map_it != page_table_.end() && page_id != INVALID_PAGE_ID) {
+  if (map_it != page_table_.end()) {
     replacer_->Pin(map_it->second);
     pages_[map_it->second].pin_count_++;
 

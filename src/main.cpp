@@ -25,8 +25,8 @@ void InputCommand(char *input, const int len) {
   while ((ch = getchar()) != ';') {
     input[i++] = ch;
   }
-  input[i] = ch;    // ;
-  getchar();        // remove enter
+  input[i] = ch;  // ;
+  getchar();      // remove enter
 }
 
 int main(int argc, char **argv) {
@@ -69,6 +69,8 @@ int main(int argc, char **argv) {
 #endif
     }
 
+    SyntaxTreePrinter t(MinisqlGetParserRootNode());
+    t.PrintTree(std::cout);
     ExecuteContext context;
     engine.Execute(MinisqlGetParserRootNode(), &context);
     sleep(1);
@@ -83,7 +85,6 @@ int main(int argc, char **argv) {
       printf("bye!\n");
       break;
     }
-
   }
   return 0;
 }

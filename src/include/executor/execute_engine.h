@@ -1,6 +1,7 @@
 #ifndef MINISQL_EXECUTE_ENGINE_H
 #define MINISQL_EXECUTE_ENGINE_H
 
+#include <iomanip>
 #include <string>
 #include <unordered_map>
 #include "common/dberr.h"
@@ -41,6 +42,8 @@ public:
   dberr_t Execute(pSyntaxNode ast, ExecuteContext *context);
 
 private:
+ dberr_t ParseTableColumnDefinition(pSyntaxNode ast, std::vector<Column*>& columns, MemHeap* heap);
+
   dberr_t ExecuteCreateDatabase(pSyntaxNode ast, ExecuteContext *context);
 
   dberr_t ExecuteDropDatabase(pSyntaxNode ast, ExecuteContext *context);

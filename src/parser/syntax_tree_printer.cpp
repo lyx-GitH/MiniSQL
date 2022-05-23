@@ -7,7 +7,7 @@
 
 #include "parser/syntax_tree_printer.h"
 
-void SyntaxTreePrinter::PrintTree(std::ofstream &out) {
+void SyntaxTreePrinter::PrintTree(std::ostream &out) {
   if (root_ == nullptr) {
     out << "digraph G{ }" << std::endl;
     return;
@@ -17,7 +17,7 @@ void SyntaxTreePrinter::PrintTree(std::ofstream &out) {
   out << "}" << std::endl;
 }
 
-void SyntaxTreePrinter::PrintTreeLow(pSyntaxNode node, std::ofstream &out) {
+void SyntaxTreePrinter::PrintTreeLow(pSyntaxNode node, std::ostream &out) {
   out << "SYNTAX_NODE_" << node->id_ << "[label=\"";
   out << GetSyntaxNodeTypeStr(node->type_) << "(" << node->line_no_ << "," << node->col_no_ << ")";
   out << "\\n";

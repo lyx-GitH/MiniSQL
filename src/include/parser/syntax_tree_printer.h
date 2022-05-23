@@ -15,10 +15,10 @@ class SyntaxTreePrinter {
 public:
   explicit SyntaxTreePrinter(pSyntaxNode root) : root_(root) {};
 
-  void PrintTree(std::ofstream &out);
+  void PrintTree(std::ostream &out);
 
 private:
-  void PrintTreeLow(pSyntaxNode node, std::ofstream &out);
+  void PrintTreeLow(pSyntaxNode node, std::ostream &out);
 
 private:
   pSyntaxNode root_;

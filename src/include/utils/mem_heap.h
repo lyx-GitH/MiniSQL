@@ -7,14 +7,12 @@
 #include <unordered_map>
 #include "common/macros.h"
 using raw_ptr = int64_t;
-#define RAW(ptr) (reinterpret_cast<int64_t>(ptr))
+#define RAW(ptr) (reinterpret_cast<raw_ptr>(ptr))
 #define TO_PTR(raw) (reinterpret_cast<void *>(raw))
 
 struct PtrHeap {
   std::unordered_set<raw_ptr> Used;
   std::unordered_set<raw_ptr> NotUsed;
-
-  PtrHeap() : Used(), NotUsed(){};
 };
 
 class MemHeap {
