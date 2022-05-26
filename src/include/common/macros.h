@@ -44,4 +44,9 @@
 #define MOVE_FORWARD(ptr, cnt, type) do{ ptr += sizeof(type); cnt += sizeof(type); } while(0)
 #define STEP_FORWARD(ptr, cnt, steps) do{ptr += (steps); cnt += (steps);}while(0)
 
+#define COUT_ALIGN(x) std::cout << setiosflags(ios::left) << setw(x)
+#define ENABLE_RED "\033[1;31m"
+#define ENABLE_ERROR std::cout <<ENABLE_RED<< "Minisql execution error at line "<<ast->line_no_<<", col "<<ast->col_no_<<", message: "
+#define DISABLED "\033[0m" <<std::endl
+
 #endif  // MINISQL_MACROS_H

@@ -6,11 +6,23 @@
 #include <unordered_map>
 #include "common/dberr.h"
 #include "common/instance.h"
+#include "common/macros.h"
 #include "transaction/transaction.h"
 
 extern "C" {
 #include "parser/parser.h"
 };
+
+/**DBs[db_name][table_name][index_name] = index_rows;**/
+
+/*{*IndexName* ->{all rows}}*/
+typedef std::unordered_map<std::string, std::unordered_set<std::string>> PseudoIndex;
+
+/*{TableName, all_indexs}*/
+typedef std::unordered_map<std::string, PseudoIndex> PseudoTables;
+
+/*{DB_name, all_dbs}*/
+typedef std::unordered_map<std::string, PseudoTables> PseudoDataBases;
 
 /**
  * ExecuteContext stores all the context necessary to run in the execute engine
@@ -27,7 +39,7 @@ struct ExecuteContext {
  * ExecuteEngine
  */
 class ExecuteEngine {
-public:
+ public:
   ExecuteEngine();
 
   ~ExecuteEngine() {
@@ -41,9 +53,7 @@ public:
    */
   dberr_t Execute(pSyntaxNode ast, ExecuteContext *context);
 
-private:
- dberr_t ParseTableColumnDefinition(pSyntaxNode ast, std::vector<Column*>& columns, MemHeap* heap);
-
+ private:
   dberr_t ExecuteCreateDatabase(pSyntaxNode ast, ExecuteContext *context);
 
   dberr_t ExecuteDropDatabase(pSyntaxNode ast, ExecuteContext *context);
@@ -82,9 +92,16 @@ private:
 
   dberr_t ExecuteQuit(pSyntaxNode ast, ExecuteContext *context);
 
-private:
-  [[maybe_unused]] std::unordered_map<std::string, DBStorageEngine *> dbs_;  /** all opened databases */
-  [[maybe_unused]] std::string current_db_;  /** current database */
+ private:
+  std::unordered_map<std::string, DBStorageEngine *> dbs_; /** all opened databases */
+  std::string current_db_;                                 /** current database */
+  static PseudoDataBases database_structure;
+
+  static bool generate_db_struct(const std::string &db_name, const DBStorageEngine *db);
+  std::vector<Field> &&make_db_tuple(pSyntaxNode head, const Schema &schema,
+                                     std::unordered_map<std::string, std::size_t> &column_index);
+  bool check_index_constrains(const std::string &table_name, const std::vector<Field>& data_tuple, std::unordered_map<std::string, std::size_t>& column_index);
+  void update_index(const std::string& table_name, const RowId& rid, const std::vector<Field>& data_tuple, std::unordered_map<std::string, std::size_t>& column_index);
 };
 
-#endif //MINISQL_EXECUTE_ENGINE_H
+#endif  // MINISQL_EXECUTE_ENGINE_H

@@ -8,10 +8,10 @@ bool TableHeap::InsertTuple(Row &row, Transaction *txn) {
   if (row_size > Pages.begin()->first) {
     // No page is enough for insertion
     page_id_t new_page_id = INVALID_PAGE_ID;
-    auto new_page = static_cast<TablePage *>(buffer_pool_manager_->NewPage(new_page_id));
-    auto old_page = static_cast<TablePage *>(buffer_pool_manager_->FetchPage(first_page_id_));
+    auto new_page = reinterpret_cast<TablePage *>(buffer_pool_manager_->NewPage(new_page_id));
+    auto old_page = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(first_page_id_));
 
-    ASSERT(new_page != nullptr, "TableHeap::InsertTuple : Null While Allocating New Page");
+    ASSERT(new_page != nullptr && old_page != nullptr, "TableHeap::InsertTuple : Null While Allocating New Page");
 
     // set this page to the front of the list.
     new_page->Init(new_page_id, INVALID_PAGE_ID, log_manager_, txn);
@@ -25,7 +25,7 @@ bool TableHeap::InsertTuple(Row &row, Transaction *txn) {
     buffer_pool_manager_->UnpinPage(old_page->GetTablePageId(), true);
   } else {
     auto that_page_id = *(Pages.begin()->second.begin());
-    auto that_page = static_cast<TablePage *>(buffer_pool_manager_->FetchPage(that_page_id));
+    auto that_page = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(that_page_id));
     ASSERT(that_page != nullptr, "TableHeap::InsertTuple : Null While Fetching Page");
     ERASE(Pages, that_page);
     isInsertSuccess = that_page->InsertTuple(row, schema_, txn, lock_manager_, log_manager_);
@@ -58,7 +58,7 @@ bool TableHeap::UpdateTuple(const Row &row, const RowId &rid, Transaction *txn) 
   if (row.GetSerializedSize(schema_) > PAGE_SIZE) return false;
 
   auto that_page_id = rid.GetPageId();
-  auto that_page = static_cast<TablePage *>(buffer_pool_manager_->FetchPage(that_page_id));
+  auto that_page = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(that_page_id));
 
   ASSERT(that_page != nullptr, "TableHeap::UpdateTuple : Fetching Null Tuple");
   ASSERT(HAS(Pages, that_page), "TableHeap::UpdateTuple : Fetching Null Tuple");
@@ -78,12 +78,13 @@ void TableHeap::ApplyDelete(const RowId &rid, Transaction *txn) {
   // Step1: Find the page which contains the tuple.
   // Step2: Delete the tuple from the page.
   auto page_id = rid.GetPageId();
-  auto page = static_cast<TablePage *>(buffer_pool_manager_->FetchPage(page_id));
+  auto page = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(page_id));
 
   ASSERT(page != nullptr, "TableHeap::ApplyDelete : Page dose not exist");
   ERASE(Pages, page);
   page->ApplyDelete(rid, txn, log_manager_);
   INSERT(Pages, page);
+  buffer_pool_manager_->UnpinPage(page_id, true);
 }
 
 void TableHeap::RollbackDelete(const RowId &rid, Transaction *txn) {
@@ -107,23 +108,26 @@ void TableHeap::FreeHeap() {
 
   while (cur_page_id != INVALID_PAGE_ID) {
     temp = cur_page_id;
-    ToBeDelete = static_cast<TablePage *>(buffer_pool_manager_->FetchPage(cur_page_id));
+    ToBeDelete = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(cur_page_id));
     cur_page_id = ToBeDelete->GetNextPageId();
+    buffer_pool_manager_->UnpinPage(temp, true);
     buffer_pool_manager_->DeletePage(temp);
   }
 }
 
 bool TableHeap::GetTuple(Row *row, Transaction *txn) {
   auto page_id = row->GetRowId().GetPageId();
-  auto page = static_cast<TablePage *>(buffer_pool_manager_->FetchPage(page_id));
+  auto page = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(page_id));
 
   ASSERT(page != nullptr, "TableHeap::GetTuple : Row ID Dose Not Exist");
 
-  return page->GetTuple(row, schema_, txn, lock_manager_);
+  bool isGet= page->GetTuple(row, schema_, txn, lock_manager_);
+  buffer_pool_manager_->UnpinPage(page_id, false);
+  return isGet;
 }
 
 TableIterator TableHeap::Begin(Transaction *txn) {
-  auto FirstPage = static_cast<TablePage *>(buffer_pool_manager_->FetchPage(first_page_id_));
+  auto FirstPage = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(first_page_id_));
   if (FirstPage == nullptr)
     // first page is empty
     return End();

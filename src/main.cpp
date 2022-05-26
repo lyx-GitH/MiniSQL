@@ -1,8 +1,11 @@
+#include <chrono>
 #include <cstdio>
 #include "executor/execute_engine.h"
 #include "glog/logging.h"
 #include "parser/syntax_tree_printer.h"
 #include "utils/tree_file_mgr.h"
+
+#define SYNTAX_OUT
 
 extern "C" {
 int yyparse(void);
@@ -40,7 +43,10 @@ int main(int argc, char **argv) {
   TreeFileManagers syntax_tree_file_mgr("syntax_tree_");
   [[maybe_unused]] uint32_t syntax_tree_id = 0;
 
-  while (1) {
+  std::chrono::time_point<std::chrono::system_clock> start, end;
+  dberr_t res;
+
+  while (true) {
     // read from buffer
     InputCommand(cmd, buf_size);
     // create buffer for sql input
@@ -68,11 +74,25 @@ int main(int argc, char **argv) {
       printer.PrintTree(syntax_tree_file_mgr[syntax_tree_id++]);
 #endif
     }
-
+#ifdef SYNTAX_OUT
     SyntaxTreePrinter t(MinisqlGetParserRootNode());
     t.PrintTree(std::cout);
+#endif
     ExecuteContext context;
-    engine.Execute(MinisqlGetParserRootNode(), &context);
+
+    /*====================== Execution Start =======================*/
+    start = std::chrono::system_clock::now();
+    res = engine.Execute(MinisqlGetParserRootNode(), &context);
+    end = std::chrono::system_clock::now();
+    /*====================== Execution End ========================*/
+
+    if (res == DB_SUCCESS)
+      printf("\033[1;32m[Succeeded] \033[0m in %llu ms\n",
+             std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count());
+    else
+      printf("\033[1;31m[Failed] \033[0m in %llu ms, code: %d\n",
+             std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count(), res);
+
     sleep(1);
 
     // clean memory after parse
