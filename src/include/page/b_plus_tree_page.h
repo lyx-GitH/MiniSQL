@@ -5,6 +5,7 @@
 #include <climits>
 #include <cstdlib>
 #include <string>
+#include <cmath>
 #include "buffer/buffer_pool_manager.h"
 
 #define MappingType std::pair<KeyType, ValueType>
@@ -58,6 +59,7 @@ public:
   void SetPageId(page_id_t page_id);
 
   void SetLSN(lsn_t lsn = INVALID_LSN);
+
 
 private:
   // member variable, attributes that both internal and leaf page share

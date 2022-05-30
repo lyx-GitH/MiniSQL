@@ -1,4 +1,5 @@
 #include "record/schema.h"
+#include <iostream>
 
 uint32_t Schema::SerializeTo(char *buf) const {
   // replace with your code here
@@ -9,7 +10,7 @@ uint32_t Schema::SerializeTo(char *buf) const {
 
   MACH_WRITE_UINT32(buf, columns_.size());
   MOVE_FORWARD(buf, ser_cnt, uint32_t);
-
+  
   uint32_t steps = 0;
 
   for (auto column : columns_) {
@@ -35,14 +36,23 @@ uint32_t Schema::GetSerializedSize() const {
   if (columns_.empty()) {
     return 2 * sizeof(uint32_t);
   } else {
-    auto c_size = columns_[0]->GetSerializedSize();
-    return 2 * sizeof(uint32_t) + c_size * columns_.size();
+    uint32_t size = 0;
+    for (auto column : columns_)
+    {
+      auto c_size = column->GetSerializedSize();
+      size += c_size;
+    }
+    
+    return 2 * sizeof(uint32_t) + size;
   }
 }
 
 uint32_t Schema::DeserializeFrom(char *buf, Schema *&schema, MemHeap *heap) {
   // replace with your code here
+  std::cout << "Schema::DeserializeFrom" << std::endl;
+  ASSERT(buf != nullptr, "Schema::DeserializeFrom : Null buf");
   ASSERT(schema == nullptr, "Schema::DeserializeFrom : Not Null Schema");
+
   uint32_t magic_number;
   uint32_t columns_length;
 
@@ -66,7 +76,7 @@ uint32_t Schema::DeserializeFrom(char *buf, Schema *&schema, MemHeap *heap) {
     auto vec = std::vector<Column *>(columns_length);
     // retrieve all columns
     for (uint32_t i = 0; i < columns_length; i++) {
-      Column *col;
+      Column *col = nullptr;
       steps = Column::DeserializeFrom(buf, col, heap);
       STEP_FORWARD(buf, ser_cnt, steps);
       vec[i] = col;

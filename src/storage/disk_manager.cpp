@@ -83,7 +83,6 @@ page_id_t DiskManager::AllocatePage() {
 
     ASSERT(i == 0, "DiskManager::Allocate->NewPageAllocate ERROR");
 
-
     auto meta_p_id = GetMetaIdP(dMeta->num_allocated_pages_);
 
     dMeta->extent_used_page_[dMeta->num_extents_] = 1;

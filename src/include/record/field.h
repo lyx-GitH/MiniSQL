@@ -2,11 +2,12 @@
 #define MINISQL_FIELD_H
 
 #include <cstring>
+#include <iostream>
 
 #include "common/config.h"
 #include "common/macros.h"
-#include "record/types.h"
 #include "record/type_id.h"
+#include "record/types.h"
 
 class Field {
   friend class Type;
@@ -17,7 +18,7 @@ class Field {
 
   friend class TypeFloat;
 
-public:
+ public:
   explicit Field(const TypeId type) : type_id_(type), len_(FIELD_NULL_LEN), is_null_(true) {}
 
   ~Field() {
@@ -80,33 +81,23 @@ public:
     return *this;
   }
 
-  inline bool IsNull() const {
-    return is_null_;
-  }
+  inline bool IsNull() const { return is_null_; }
 
-  inline uint32_t GetLength() const {
-    return Type::GetInstance(type_id_)->GetLength(*this);
-  }
+  inline TypeId GetTypeId() const { return type_id_; };
 
-  inline const char *GetData() const {
-    return Type::GetInstance(type_id_)->GetData(*this);
-  }
+  inline uint32_t GetLength() const { return Type::GetInstance(type_id_)->GetLength(*this); }
 
-  inline uint32_t SerializeTo(char *buf) const {
-    return Type::GetInstance(type_id_)->SerializeTo(*this, buf);
-  }
+  inline const char *GetData() const { return Type::GetInstance(type_id_)->GetData(*this); }
+
+  inline uint32_t SerializeTo(char *buf) const { return Type::GetInstance(type_id_)->SerializeTo(*this, buf); }
 
   inline static uint32_t DeserializeFrom(char *buf, const TypeId type_id, Field **field, bool is_null, MemHeap *heap) {
     return Type::GetInstance(type_id)->DeserializeFrom(buf, field, is_null, heap);
   }
 
-  inline uint32_t GetSerializedSize() const {
-    return Type::GetInstance(type_id_)->GetSerializedSize(*this, is_null_);
-  }
+  inline uint32_t GetSerializedSize() const { return Type::GetInstance(type_id_)->GetSerializedSize(*this, is_null_); }
 
-  inline bool CheckComparable(const Field &o) const {
-    return type_id_ == o.type_id_;
-  }
+  inline bool CheckComparable(const Field &o) const { return type_id_ == o.type_id_; }
 
   inline CmpBool CompareEquals(const Field &o) const { return Type::GetInstance(type_id_)->CompareEquals(*this, o); }
 
@@ -130,6 +121,20 @@ public:
     return Type::GetInstance(type_id_)->CompareGreaterThanEquals(*this, o);
   }
 
+  std::size_t GetTextLength() const {
+    if (IsNull()) return 4;  //"null"
+    switch (type_id_) {
+      case kTypeInt:
+        return std::to_string(value_.integer_).length();
+      case kTypeFloat:
+        return std::to_string(value_.float_).length();
+      case kTypeChar:
+        return strlen(value_.chars_);
+      default:
+        return 0;
+    }
+  }
+
   friend void Swap(Field &first, Field &second) {
     std::swap(first.value_, second.value_);
     std::swap(first.type_id_, second.type_id_);
@@ -138,7 +143,43 @@ public:
     std::swap(first.manage_data_, second.manage_data_);
   }
 
-protected:
+  void DeepCopy(const Field& other) {
+    if(manage_data_ && type_id_ == kTypeChar)
+      delete[] value_.chars_;
+    type_id_ = other.type_id_;
+    len_ = other.len_;
+    is_null_ = other.is_null_;
+    manage_data_ = other.manage_data_;
+    if (type_id_ == TypeId::kTypeChar && !is_null_ && manage_data_) {
+      value_.chars_ = new char[len_];
+      memcpy(value_.chars_, other.value_.chars_, len_);
+    } else {
+      value_ = other.value_;
+    }
+  }
+
+  friend std::ostream &operator<<(std::ostream &out, const Field &field) {
+    if (field.IsNull())
+      out << "null";
+    else
+      switch (field.type_id_) {
+        case kTypeInvalid:
+          out << "Invalid.";
+          break;
+        case kTypeInt:
+          out << field.value_.integer_;
+          break;
+        case kTypeFloat:
+          out << field.value_.float_;
+          break;
+        case kTypeChar:
+          out << field.value_.chars_;
+          break;
+      }
+    return out;
+  }
+
+ protected:
   union Val {
     int32_t integer_;
     float float_;
@@ -150,5 +191,4 @@ protected:
   bool manage_data_{false};
 };
 
-
-#endif //MINISQL_FIELD_H
+#endif  // MINISQL_FIELD_H

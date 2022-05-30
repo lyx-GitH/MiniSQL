@@ -26,6 +26,9 @@ public:
   /** Default destructor. */
   ~Page() = default;
 
+  /** Set the page data */
+  inline void SetData(const char *data) {for (uint32_t i = 0; i < PAGE_SIZE; ++i) data_[i] = data[i]; }
+
   /** @return the actual data contained within this page */
   inline char *GetData() { return data_; }
 

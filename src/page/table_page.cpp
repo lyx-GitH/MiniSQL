@@ -184,7 +184,7 @@ bool TablePage::GetNextTupleRid(const RowId &cur_rid, RowId *next_rid) {
       return true;
     }
   }
-  // Otherwise return false as there are no more tuples.
+  // Otherwise, return false as there are no more tuples.
   next_rid->Set(INVALID_PAGE_ID, 0);
   return false;
 }

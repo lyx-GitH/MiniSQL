@@ -6,6 +6,7 @@
 #include "catalog/table.h"
 #include "index/generic_key.h"
 #include "index/b_plus_tree_index.h"
+#include "index/index.h"
 #include "record/schema.h"
 
 class IndexMetadata {
@@ -62,9 +63,14 @@ public:
 
   void Init(IndexMetadata *meta_data, TableInfo *table_info, BufferPoolManager *buffer_pool_manager) {
     // Step1: init index metadata and table info
+    meta_data_  = meta_data;
+    table_info_ = table_info;
+
     // Step2: mapping index key to key schema
+    key_schema_ = Schema::ShallowCopySchema(table_info->GetSchema(), meta_data_->GetKeyMapping(), heap_);
     // Step3: call CreateIndex to create the index
-    ASSERT(false, "Not Implemented yet.");
+    index_ = CreateIndex(buffer_pool_manager);
+    // ASSERT(false, "Not Implemented yet.");
   }
 
   inline Index *GetIndex() { return index_; }
@@ -82,8 +88,12 @@ private:
                          key_schema_{nullptr}, heap_(new SimpleMemHeap()) {}
 
   Index *CreateIndex(BufferPoolManager *buffer_pool_manager) {
-    ASSERT(false, "Not Implemented yet.");
-    return nullptr;
+    using INDEX_KEY_TYPE = GenericKey<32>;
+    using INDEX_COMPARATOR_TYPE = GenericComparator<32>;
+    using BP_TREE_INDEX = BPlusTreeIndex<INDEX_KEY_TYPE, RowId, INDEX_COMPARATOR_TYPE>;
+    auto index = new(heap_->Allocate(sizeof(BP_TREE_INDEX)))BP_TREE_INDEX(meta_data_->GetIndexId(), key_schema_, buffer_pool_manager);
+    //ASSERT(false, "Not Implemented yet.");
+    return index;
   }
 
 private:

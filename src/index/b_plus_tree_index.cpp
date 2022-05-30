@@ -4,11 +4,7 @@
 INDEX_TEMPLATE_ARGUMENTS
 BPLUSTREE_INDEX_TYPE::BPlusTreeIndex(index_id_t index_id, IndexSchema *key_schema,
                                      BufferPoolManager *buffer_pool_manager)
-        : Index(index_id, key_schema),
-          comparator_(key_schema_),
-          container_(index_id, buffer_pool_manager, comparator_) {
-
-}
+    : Index(index_id, key_schema), comparator_(key_schema_), container_(index_id, buffer_pool_manager, comparator_) {}
 
 INDEX_TEMPLATE_ARGUMENTS
 dberr_t BPLUSTREE_INDEX_TYPE::InsertEntry(const Row &key, RowId row_id, Transaction *txn) {
@@ -44,38 +40,45 @@ dberr_t BPLUSTREE_INDEX_TYPE::ScanKey(const Row &key, vector<RowId> &result, Tra
 }
 
 INDEX_TEMPLATE_ARGUMENTS
+dberr_t BPLUSTREE_INDEX_TYPE::ScanKey(const Row &key, std::unordered_set<RowId> &ans_set) {
+  KeyType index_key;
+  index_key.SerializeFromKey(key, key_schema_);
+  if (container_.GetValue(index_key, ans_set)) {
+    return DB_SUCCESS;
+  }
+  return DB_KEY_NOT_FOUND;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+void BPLUSTREE_INDEX_TYPE::RangeScanKey(const Row &key, std::unordered_set<RowId> &ans_set, bool left,
+                                        bool key_included) {
+  KeyType index_key;
+  index_key.SerializeFromKey(key, key_schema_);
+  container_.RangeScan(index_key, ans_set, left, key_included);
+}
+
+INDEX_TEMPLATE_ARGUMENTS
 dberr_t BPLUSTREE_INDEX_TYPE::Destroy() {
   container_.Destroy();
   return DB_SUCCESS;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-INDEXITERATOR_TYPE BPLUSTREE_INDEX_TYPE::GetBeginIterator() {
-  return container_.Begin();
-}
+INDEXITERATOR_TYPE BPLUSTREE_INDEX_TYPE::GetBeginIterator() { return container_.Begin(); }
 
 INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE
-BPLUSTREE_INDEX_TYPE::GetBeginIterator(const KeyType &key) {
-  return container_.Begin(key);
-}
+BPLUSTREE_INDEX_TYPE::GetBeginIterator(const KeyType &key) { return container_.Begin(key); }
 
 INDEX_TEMPLATE_ARGUMENTS
-INDEXITERATOR_TYPE BPLUSTREE_INDEX_TYPE::GetEndIterator() {
-  return container_.End();
-}
+INDEXITERATOR_TYPE BPLUSTREE_INDEX_TYPE::GetEndIterator() { return container_.End(); }
 
-template
-class BPlusTreeIndex<GenericKey<4>, RowId, GenericComparator<4>>;
+template class BPlusTreeIndex<GenericKey<4>, RowId, GenericComparator<4>>;
 
-template
-class BPlusTreeIndex<GenericKey<8>, RowId, GenericComparator<8>>;
+template class BPlusTreeIndex<GenericKey<8>, RowId, GenericComparator<8>>;
 
-template
-class BPlusTreeIndex<GenericKey<16>, RowId, GenericComparator<16>>;
+template class BPlusTreeIndex<GenericKey<16>, RowId, GenericComparator<16>>;
 
-template
-class BPlusTreeIndex<GenericKey<32>, RowId, GenericComparator<32>>;
+template class BPlusTreeIndex<GenericKey<32>, RowId, GenericComparator<32>>;
 
-template
-class BPlusTreeIndex<GenericKey<64>, RowId, GenericComparator<64>>;
+template class BPlusTreeIndex<GenericKey<64>, RowId, GenericComparator<64>>;

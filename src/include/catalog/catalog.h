@@ -4,6 +4,8 @@
 #include <string>
 #include <map>
 #include <unordered_map>
+#include <iterator>
+#include <algorithm>
 
 #include "buffer/buffer_pool_manager.h"
 #include "catalog/indexes.h"
@@ -18,6 +20,8 @@ class CatalogMeta {
   friend class CatalogManager;
 
 public:
+  CatalogMeta(std::map<table_id_t, page_id_t> table_meta_pages_, std::map<index_id_t, page_id_t> index_meta_pages_);
+
   void SerializeTo(char *buf) const;
 
   static CatalogMeta *DeserializeFrom(char *buf, MemHeap *heap);
@@ -25,11 +29,11 @@ public:
   uint32_t GetSerializedSize() const;
 
   inline table_id_t GetNextTableId() const {
-    return table_meta_pages_.size() == 0 ? 0 : table_meta_pages_.rbegin()->first;
+    return table_meta_pages_.size() == 0 ? 0 : table_meta_pages_.rbegin()->first + 1;
   }
 
   inline index_id_t GetNextIndexId() const {
-    return index_meta_pages_.size() == 0 ? 0 : index_meta_pages_.rbegin()->first;
+    return index_meta_pages_.size() == 0 ? 0 : index_meta_pages_.rbegin()->first + 1;
   }
 
   static CatalogMeta *NewInstance(MemHeap *heap) {
@@ -90,6 +94,8 @@ public:
   dberr_t DropIndex(const std::string &table_name, const std::string &index_name);
 
 private:
+  dberr_t SerializeToCatalogMetaPage() const;
+
   dberr_t FlushCatalogMetaPage() const;
 
   dberr_t LoadTable(const table_id_t table_id, const page_id_t page_id);

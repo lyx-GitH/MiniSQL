@@ -17,6 +17,10 @@ public:
 
   dberr_t ScanKey(const Row &key, std::vector<RowId> &result, Transaction *txn) override;
 
+  dberr_t ScanKey(const Row & key, std::unordered_set<RowId>& ans_set) override;
+
+  void RangeScanKey(const Row& key, std::unordered_set<RowId>& ans_set, bool to_left, bool key_included) override;
+
   dberr_t Destroy() override;
 
   INDEXITERATOR_TYPE GetBeginIterator();
