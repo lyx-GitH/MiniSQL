@@ -1,11 +1,14 @@
 #include "storage/table_heap.h"
 
+#define TUPLE_SIZE 8
+
 bool TableHeap::InsertTuple(Row &row, Transaction *txn) {
   // too large to be stored inside.
-  auto row_size = row.GetSerializedSize(schema_);
+  auto row_size = row.GetSerializedSize(schema_) + TUPLE_SIZE;
   if (row_size >= PAGE_SIZE) return false;
   bool isInsertSuccess = false;
-  if (row_size > Pages.begin()->first || Pages.empty()) {
+  if (row_size > 0 - Pages.begin()->first) {
+//    LOG(INFO) << Pages.begin()->first;
     // No page is enough for insertion
     page_id_t new_page_id = INVALID_PAGE_ID;
     auto new_page = reinterpret_cast<TablePage *>(buffer_pool_manager_->NewPage(new_page_id));

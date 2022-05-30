@@ -50,6 +50,8 @@ class BPlusTree {
   // return the value associated with a given key
   bool GetValue(const KeyType &key, std::vector<ValueType> &result, Transaction *transaction = nullptr);
 
+  bool GetValue(const KeyType& key, std::unordered_set<ValueType>& ans_set);
+
   INDEXITERATOR_TYPE Begin();
 
   INDEXITERATOR_TYPE Begin(const KeyType &key);

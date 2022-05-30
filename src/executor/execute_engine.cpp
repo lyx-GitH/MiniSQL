@@ -805,10 +805,17 @@ bool ExecuteEngine::parse_compare(pSyntaxNode ast, const TableInfo *table_info, 
 
   if (key_field.GetTypeId() == kTypeInvalid) return false;
 
-  if (!index_info || idx_comps.count(compare_token) == 0) {
+  if (index_info && compare_token == "=")  // has a index '='    ueey, just scan key.
+  {
+    std::vector<Field> f;
+    f.push_back(key_field);
+    index_info->GetIndex()->ScanKey(Row(f), ans_set);
+  } else if (!index_info || idx_comps.count(compare_token) == 0)  // no index, or the token cannot be proccssed by index
+  {
     table_info->GetTableHeap()->FetchId(ans_set, key_index, table_info->GetSchema(), key_field,
                                         comparisons.find(compare_token)->second);
-  } else {
+  } else  // token can be done
+  {
     std::vector<Field> f;
     f.push_back(key_field);
     auto cmp_args = idx_comps.find(compare_token)->second;

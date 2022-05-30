@@ -13,7 +13,7 @@ using Fields = std::vector<Field>;
 
 TEST(TablaHeapTest, MemHeapTest) {
   SimpleMemHeap* heap = new SimpleMemHeap();
-  int iter = 1000;
+  int iter = 100000;
   std::unordered_map<void*, int> ptrs;
   std::unordered_map<int, vector<void*>> ptr_sizes;
 
@@ -40,9 +40,10 @@ TEST(TablaHeapTest, MemHeapTest) {
 
 TEST(TableHeapTest, TableHeapSampleTest) {
   // init testing instance
+  remove(db_file_name.c_str());
   DBStorageEngine engine(db_file_name);
   SimpleMemHeap heap;
-  const int row_nums = 1000;
+  const int row_nums = 5000;
   // create schema
   std::vector<Column *> columns = {
           ALLOC_COLUMN(heap)("id", TypeId::kTypeInt, 0, false, false),
@@ -63,7 +64,8 @@ TEST(TableHeapTest, TableHeapSampleTest) {
             Field(TypeId::kTypeFloat, RandomUtils::RandomFloat(-999.f, 999.f))
     };
     Row row(*fields);
-    table_heap->InsertTuple(row, nullptr);
+    bool r = table_heap->InsertTuple(row, nullptr);
+    ASSERT(r, "invalid insert");
     row_values[row.GetRowId().Get()] = fields;
     delete[] characters;
   }

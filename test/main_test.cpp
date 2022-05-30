@@ -3,7 +3,7 @@
 
 int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
-  testing::GTEST_FLAG(filter) = "TupleTest.ColumnSerTest";
+  testing::GTEST_FLAG(filter) = "TableHeapTest.TableHeapSampleTest";
   FLAGS_logtostderr = true;
   FLAGS_colorlogtostderr = true;
   google::InitGoogleLogging(argv[0]);

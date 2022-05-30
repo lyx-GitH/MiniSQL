@@ -9,8 +9,17 @@
 #include "transaction/lock_manager.h"
 #include "transaction/log_manager.h"
 
-#define INSERT(C, P) C[P->GetRemain()].insert(P->GetTablePageId())
-#define ERASE(C, P) C[P->GetRemain()].erase(P->GetTablePageId())
+#define INSERT(C, P)                                                               \
+  do {                                                                             \
+    ASSERT(C[P->GetRemain()].count(P->GetTablePageId()) == 0, "Duplicate insert"); \
+    C[P->GetRemain()].insert(P->GetTablePageId());                                 \
+  } while (0)
+
+#define ERASE(C, P)                                                              \
+  do {                                                                           \
+    ASSERT(C[P->GetRemain()].count(P->GetTablePageId()) != 0, "Invalid Delete"); \
+    erase_page(P);                                \
+  } while (0)
 #define HAS(C, P) C[P->GetRemain()].count(P->GetTablePageId()) != 0
 
 class TableHeap {
@@ -72,8 +81,8 @@ class TableHeap {
 
   void FetchAllIds(std::unordered_set<RowId> &ans_set);
 
-  void FetchId(std::unordered_set<RowId> &ans_set, std::size_t column_index, Schema* schema,
-               const Field& key, const std::function<bool(const Field &, const Field &)> &filter);
+  void FetchId(std::unordered_set<RowId> &ans_set, std::size_t column_index, Schema *schema, const Field &key,
+               const std::function<bool(const Field &, const Field &)> &filter);
 
   /**
    * Read a tuple from the table.
@@ -148,6 +157,12 @@ class TableHeap {
   Schema *schema_;
 
   std::map<int64_t, std::unordered_set<page_id_t>> Pages;
+
+  void erase_page(TablePage *page) {
+    auto rem = page->GetRemain();
+    Pages[rem].erase(page->GetTablePageId());
+    if (Pages[rem].size() == 0) Pages.erase(rem);
+  }
 
   [[maybe_unused]] LogManager *log_manager_;
   [[maybe_unused]] LockManager *lock_manager_;

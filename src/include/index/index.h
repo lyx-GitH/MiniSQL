@@ -3,15 +3,14 @@
 
 #include <memory>
 
+#include <unordered_set>
 #include "common/dberr.h"
 #include "record/row.h"
 #include "transaction/transaction.h"
-#include <unordered_set>
 
 class Index {
-public:
-  explicit Index(index_id_t index_id, IndexSchema *key_schema)
-          : index_id_(index_id), key_schema_(key_schema) {}
+ public:
+  explicit Index(index_id_t index_id, IndexSchema *key_schema) : index_id_(index_id), key_schema_(key_schema) {}
 
   virtual ~Index() {}
 
@@ -21,13 +20,15 @@ public:
 
   virtual dberr_t ScanKey(const Row &key, std::vector<RowId> &result, Transaction *txn) = 0;
 
-  virtual void RangeScanKey(const Row& key, std::unordered_set<RowId>& ans_set, bool left, bool key_included) = 0;
+  virtual dberr_t ScanKey(const Row &key, std::unordered_set<RowId> &ans_set) = 0;
+
+  virtual void RangeScanKey(const Row &key, std::unordered_set<RowId> &ans_set, bool left, bool key_included) = 0;
 
   virtual dberr_t Destroy() = 0;
 
-protected:
+ protected:
   index_id_t index_id_;
   IndexSchema *key_schema_;
 };
 
-#endif //MINISQL_INDEX_H
+#endif  // MINISQL_INDEX_H
