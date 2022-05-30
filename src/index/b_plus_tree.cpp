@@ -54,6 +54,33 @@ void BPLUSTREE_TYPE::Destroy() {
 INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::IsEmpty() const { return root_page_id_ == INVALID_PAGE_ID; }
 
+INDEX_TEMPLATE_ARGUMENTS
+void BPLUSTREE_TYPE::RangeScan(const KeyType& key, std::unordered_set<ValueType>& ans_set, bool to_left, bool key_included) {
+  auto leaf = FindLeafPage(key);
+  ASSERT(leaf != nullptr, "Invalid Fetch");
+  auto target_leaf = TO_TYPE(LeafPage*, leaf->GetData());
+  target_leaf->FetchValues(key, to_left, key_included, ans_set, comparator_);
+  auto id = target_leaf->GetNextPageId();
+  LeafPage* leafPage = nullptr;
+  if(to_left) {
+    leafPage = TO_TYPE(LeafPage *, FindLeafPage(key, true)->GetData());
+    ASSERT(leafPage != nullptr, "Invalid Fetch");
+
+
+  }else {
+    while(id!= INVALID_PAGE_ID){
+      leafPage = TO_TYPE(LeafPage *, buffer_pool_manager_->FetchPage(id)->GetData());
+      ASSERT(leafPage != nullptr, "Invalid Fetch");
+      leafPage->FetchAllValues(ans_set);
+      id = leafPage->GetNextPageId();
+      buffer_pool_manager_->UnpinPage(leafPage->GetPageId(), false);
+    }
+  }
+
+
+}
+
+
 /*****************************************************************************
  * SEARCH
  *****************************************************************************/

@@ -44,6 +44,8 @@ class BPlusTree {
   // Remove a key and its value from this B+ tree.
   void Remove(const KeyType &key, Transaction *transaction = nullptr);
 
+  void RangeScan(const KeyType& key, std::unordered_set<ValueType>& ans_set, bool to_left, bool key_included);
+
 
   // return the value associated with a given key
   bool GetValue(const KeyType &key, std::vector<ValueType> &result, Transaction *transaction = nullptr);

@@ -5,7 +5,7 @@ bool TableHeap::InsertTuple(Row &row, Transaction *txn) {
   auto row_size = row.GetSerializedSize(schema_);
   if (row_size >= PAGE_SIZE) return false;
   bool isInsertSuccess = false;
-  if (row_size > Pages.begin()->first) {
+  if (row_size > Pages.begin()->first || Pages.empty()) {
     // No page is enough for insertion
     page_id_t new_page_id = INVALID_PAGE_ID;
     auto new_page = reinterpret_cast<TablePage *>(buffer_pool_manager_->NewPage(new_page_id));
@@ -101,17 +101,46 @@ void TableHeap::RollbackDelete(const RowId &rid, Transaction *txn) {
 }
 
 void TableHeap::FreeHeap() {
-  // destroy every page inside the heap
-  auto cur_page_id = first_page_id_;
-  auto temp = first_page_id_;
-  TablePage *ToBeDelete = nullptr;
+  for (auto &page_batch : Pages) {
+    for (auto &page : page_batch.second) buffer_pool_manager_->DeletePage(page);
+  }
+  first_page_id_ = INVALID_PAGE_ID;
+}
 
-  while (cur_page_id != INVALID_PAGE_ID) {
-    temp = cur_page_id;
-    ToBeDelete = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(cur_page_id));
-    cur_page_id = ToBeDelete->GetNextPageId();
-    buffer_pool_manager_->UnpinPage(temp, true);
-    buffer_pool_manager_->DeletePage(temp);
+void TableHeap::FetchAllIds(std::unordered_set<RowId> &ans_set) {
+  for (auto &page_group : Pages) {
+    for (auto &page_id : page_group.second) {
+      auto page = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(page_id));
+      ASSERT(page != nullptr, "Invalid Fetch");
+      RowId rid;
+      page->GetFirstTupleRid(&rid);
+      while (!(INVALID_ROWID == rid)) {
+        ans_set.insert(rid);
+        page->GetNextTupleRid(rid, &rid);
+      }
+      buffer_pool_manager_->UnpinPage(page_id, false);
+    }
+  }
+}
+
+void TableHeap::FetchId(std::unordered_set<RowId> &ans_set, std::size_t column_index, Schema *schema, const Field &key,
+                        const std::function<bool(const Field &, const Field &)> &filter) {
+  for (auto &page_group : Pages) {
+    for (auto &page_id : page_group.second) {
+      auto page = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(page_id));
+      ASSERT(page != nullptr, "Invalid Fetch");
+      RowId rid;
+      page->GetFirstTupleRid(&rid);
+      while (!(INVALID_ROWID == rid)) {
+        Row row(rid);
+        page->GetTuple(&row, schema, nullptr, nullptr);
+
+        if (filter(*row.GetField(column_index), key)) ans_set.insert(rid);
+
+        page->GetNextTupleRid(rid, &rid);
+      }
+      buffer_pool_manager_->UnpinPage(page_id, false);
+    }
   }
 }
 
@@ -121,7 +150,7 @@ bool TableHeap::GetTuple(Row *row, Transaction *txn) {
 
   ASSERT(page != nullptr, "TableHeap::GetTuple : Row ID Dose Not Exist");
 
-  bool isGet= page->GetTuple(row, schema_, txn, lock_manager_);
+  bool isGet = page->GetTuple(row, schema_, txn, lock_manager_);
   buffer_pool_manager_->UnpinPage(page_id, false);
   return isGet;
 }

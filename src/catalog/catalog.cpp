@@ -16,20 +16,19 @@ uint32_t CatalogMeta::GetSerializedSize() const {
 
 CatalogMeta::CatalogMeta() {}
 
-
 CatalogManager::CatalogManager(BufferPoolManager *buffer_pool_manager, LockManager *lock_manager,
                                LogManager *log_manager, bool init)
-        : buffer_pool_manager_(buffer_pool_manager), lock_manager_(lock_manager),
-          log_manager_(log_manager), heap_(new SimpleMemHeap()) {
+    : buffer_pool_manager_(buffer_pool_manager),
+      lock_manager_(lock_manager),
+      log_manager_(log_manager),
+      heap_(new SimpleMemHeap()) {
   // ASSERT(false, "Not Implemented yet");
 }
 
-CatalogManager::~CatalogManager() {
-  delete heap_;
-}
+CatalogManager::~CatalogManager() { delete heap_; }
 
-dberr_t CatalogManager::CreateTable(const string &table_name, TableSchema *schema,
-                                    Transaction *txn, TableInfo *&table_info) {
+dberr_t CatalogManager::CreateTable(const string &table_name, TableSchema *schema, Transaction *txn,
+                                    TableInfo *&table_info) {
   // ASSERT(false, "Not Implemented yet");
   return DB_FAILED;
 }
@@ -54,6 +53,7 @@ dberr_t CatalogManager::CreateIndex(const std::string &table_name, const string 
 dberr_t CatalogManager::GetIndex(const std::string &table_name, const std::string &index_name,
                                  IndexInfo *&index_info) const {
   // ASSERT(false, "Not Implemented yet");
+
   return DB_FAILED;
 }
 
@@ -71,7 +71,6 @@ dberr_t CatalogManager::DropIndex(const string &table_name, const string &index_
   // ASSERT(false, "Not Implemented yet");
   return DB_FAILED;
 }
-
 
 dberr_t CatalogManager::FlushCatalogMetaPage() const {
   // ASSERT(false, "Not Implemented yet");

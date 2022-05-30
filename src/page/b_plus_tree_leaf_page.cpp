@@ -87,7 +87,7 @@ int B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, const ValueType &valu
   }
 
   auto insert_place = BinarySearch(key, comparator);
-//  ASSERT(insert_place > GetSize() || comparator(key, array_[insert_place].first) <= 0, "Wrong Insert Place");
+  //  ASSERT(insert_place > GetSize() || comparator(key, array_[insert_place].first) <= 0, "Wrong Insert Place");
   if (insert_place < GetSize() && comparator(array_[insert_place].first, key) == 0) return -1;
   for (int i = size - 1; i >= insert_place; i--) array_[i + 1] = array_[i];
   array_[insert_place] = MappingType(key, value);
@@ -244,6 +244,28 @@ int B_PLUS_TREE_LEAF_PAGE_TYPE::BinarySearch(const KeyType &key, const KeyCompar
       return mid;
   }
   return right + 1;
+}
+template <typename KeyType, typename ValueType, typename KeyComparator>
+void BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>::FetchValues(const KeyType &key, bool left,
+                                                                        bool key_included,
+                                                                        unordered_set<ValueType> &ans_set,
+                                                                        const KeyComparator &comparator) {
+  auto key_index = BinarySearch(key, comparator);
+  // key index is the first value that v >= key
+  if (left) {
+    if(key_included && key_index < GetSize() && comparator(key, array_[key_index].first) == 0)
+      ans_set.insert(array_[key_index].second);
+    for(int i=0; i<key_index; i++)
+      ans_set.insert(array_[key_index].second);
+  } else {
+    if (key_included && comparator(key, array_[key_index].first) == 0 && key_index < GetSize())
+      ans_set.insert(array_[key_index].second);
+    for (int i = key_index; i < GetSize(); i++) ans_set.insert(array_[i].second);
+  }
+}
+template <typename KeyType, typename ValueType, typename KeyComparator>
+void BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>::FetchAllValues(unordered_set<ValueType> &ans_set) {
+  for (int i = 0; i < GetSize(); i++) ans_set.insert(array_[i].second);
 }
 
 template class BPlusTreeLeafPage<int, int, BasicComparator<int>>;

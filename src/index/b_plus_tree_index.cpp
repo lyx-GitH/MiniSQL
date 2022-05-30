@@ -44,6 +44,13 @@ dberr_t BPLUSTREE_INDEX_TYPE::ScanKey(const Row &key, vector<RowId> &result, Tra
 }
 
 INDEX_TEMPLATE_ARGUMENTS
+void BPLUSTREE_INDEX_TYPE::RangeScanKey(const Row &key, std::unordered_set<RowId> &ans_set, bool left, bool key_included) {
+  KeyType index_key;
+  index_key.SerializeFromKey(key, key_schema_);
+  container_.RangeScan(index_key, ans_set, left, key_included);
+}
+
+INDEX_TEMPLATE_ARGUMENTS
 dberr_t BPLUSTREE_INDEX_TYPE::Destroy() {
   container_.Destroy();
   return DB_SUCCESS;

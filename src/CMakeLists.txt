@@ -7,5 +7,5 @@ FILE(GLOB_RECURSE MINISQL_SOURCE ${PROJECT_SOURCE_DIR}/src/*/*.cpp
 ADD_LIBRARY(minisql_shared SHARED ${MINISQL_SOURCE})
 TARGET_LINK_LIBRARIES(minisql_shared glog)
 
-ADD_EXECUTABLE(main main.cpp)
+ADD_EXECUTABLE(main main.cpp include/common/IntervalMerge.h include/common/comparison.h)
 TARGET_LINK_LIBRARIES(main glog minisql_shared)

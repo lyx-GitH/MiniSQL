@@ -1,5 +1,6 @@
 #include <chrono>
 #include <cstdio>
+#include "common/macros.h"
 #include "executor/execute_engine.h"
 #include "glog/logging.h"
 #include "parser/syntax_tree_printer.h"
@@ -46,6 +47,8 @@ int main(int argc, char **argv) {
   std::chrono::time_point<std::chrono::system_clock> start, end;
   dberr_t res;
 
+  SAY_HELLO;
+
   while (true) {
     // read from buffer
     InputCommand(cmd, buf_size);
@@ -66,7 +69,7 @@ int main(int argc, char **argv) {
     // parse result handle
     if (MinisqlParserGetError()) {
       // error
-      printf("%s\n", MinisqlParserGetErrorMessage());
+      printf("\033[1;31m%s\033[0m\n", MinisqlParserGetErrorMessage());
     } else {
 #ifdef ENABLE_PARSER_DEBUG
       printf("[INFO] Sql syntax parse ok!\n");

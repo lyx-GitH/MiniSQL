@@ -35,6 +35,14 @@ struct ExecuteContext {
   Transaction *txn_{nullptr};
 };
 
+enum Comparator { EQ = 0, NEQ, LT, GT, LTE, GTE };
+
+struct Condition {
+  std::string column;
+  std::string operand;
+  Comparator comp;
+};
+
 /**
  * ExecuteEngine
  */
@@ -98,10 +106,35 @@ class ExecuteEngine {
   static PseudoDataBases database_structure;
 
   static bool generate_db_struct(const std::string &db_name, const DBStorageEngine *db);
-  std::vector<Field> &&make_db_tuple(pSyntaxNode head, const Schema &schema,
-                                     std::unordered_map<std::string, std::size_t> &column_index);
-  bool check_index_constrains(const std::string &table_name, const std::vector<Field>& data_tuple, std::unordered_map<std::string, std::size_t>& column_index);
-  void update_index(const std::string& table_name, const RowId& rid, const std::vector<Field>& data_tuple, std::unordered_map<std::string, std::size_t>& column_index);
+
+  void make_db_tuple(pSyntaxNode head, const Schema &schema, std::unordered_map<std::string, std::size_t> &column_index,
+                     std::vector<Field> &data_tup);
+
+  bool check_index_constrains(const std::string &table_name, const std::vector<Field> &data_tuple,
+                              std::unordered_map<std::string, std::size_t> &column_index);
+
+  void update_index(const std::string &table_name, const RowId &rid, const std::vector<Field> &data_tuple,
+                    std::unordered_map<std::string, std::size_t> &column_index, bool insert = true);
+
+  void update_index(const std::string &table_name, const RowId &rid, const std::vector<Field *> &data_tuple,
+                    std::unordered_map<std::string, std::size_t> &column_index, bool insert = true);
+
+  bool parse_column_definitions(const std::string &table_name, pSyntaxNode head);
+  Column *parse_single_column(pSyntaxNode ast, const int table_position, bool is_nullable, bool is_unique);
+
+  bool parse_condition(pSyntaxNode ast, const TableInfo *table_info, std::unordered_set<RowId> &ans_set);
+
+  bool parse_compare(pSyntaxNode ast, const TableInfo *table_info, std::unordered_set<RowId> &ans_set);
+
+  IndexInfo *find_index(const TableInfo *table_info, const std::string &column_name);
+
+  Field get_field(pSyntaxNode ast, const TableInfo *table_info);
+
+  void pretty_print(TableInfo *table_info, std::vector<std::string> &used_columns,
+                    std::unordered_map<std::string, std::size_t> &column_index, std::unordered_set<RowId> &ans_set);
+
+  void do_update(const TableInfo* table_info, map<string, Field> new_values, unordered_set<RowId> effected_rows,
+                 unordered_map<string, size_t> column_index);
 };
 
 #endif  // MINISQL_EXECUTE_ENGINE_H

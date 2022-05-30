@@ -1,5 +1,5 @@
-#include "common/macros.h"
 #include "record/types.h"
+#include "common/macros.h"
 #include "record/field.h"
 
 inline int CompareStrings(const char *str1, int len1, const char *str2, int len2) {
@@ -17,11 +17,7 @@ inline int CompareStrings(const char *str1, int len1, const char *str2, int len2
 // ==============================Type=============================
 
 Type *Type::type_singletons_[] = {
-        new Type(TypeId::kTypeInvalid),
-        new TypeInt(),
-        new TypeFloat(),
-        new TypeChar()
-};
+    new Type(TypeId::kTypeInvalid), new TypeInt(), new TypeFloat(), new TypeChar()};
 
 uint32_t Type::SerializeTo(const Field &field, char *buf) const {
   ASSERT(false, "SerializeTo not implemented.");
@@ -257,13 +253,9 @@ uint32_t TypeChar::GetSerializedSize(const Field &field, bool is_null) const {
   return len + sizeof(uint32_t);
 }
 
-const char *TypeChar::GetData(const Field &val) const {
-  return val.value_.chars_;
-}
+const char *TypeChar::GetData(const Field &val) const { return val.value_.chars_; }
 
-uint32_t TypeChar::GetLength(const Field &val) const {
-  return val.len_;
-}
+uint32_t TypeChar::GetLength(const Field &val) const { return val.len_; }
 
 CmpBool TypeChar::CompareEquals(const Field &left, const Field &right) const {
   ASSERT(left.CheckComparable(right), "Not comparable.");
@@ -312,3 +304,4 @@ CmpBool TypeChar::CompareGreaterThanEquals(const Field &left, const Field &right
   }
   return GetCmpBool(CompareStrings(left.GetData(), left.GetLength(), right.GetData(), right.GetLength()) >= 0);
 }
+

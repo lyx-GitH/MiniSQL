@@ -118,3 +118,14 @@ TEST(TupleTest, RowTest) {
   ASSERT_TRUE(table_page.MarkDelete(row.GetRowId(), nullptr, nullptr, nullptr));
   table_page.ApplyDelete(row.GetRowId(), nullptr, nullptr);
 }
+
+TEST(TupleTest, ColumnSerTest) {
+  char buffer[4096] = {0};
+  SimpleMemHeap heap;
+  Column* col = new Column("idxyzLKQ", kTypeChar, 10, 1, false, false);
+  col->SerializeTo(buffer);
+  Column* col2 = nullptr;
+  Column::DeserializeFrom(buffer, col2, &heap);
+  std::cout <<col2->GetName()<<std::endl;
+
+}

@@ -39,6 +39,7 @@ public:
   // method to set default values
   void Init(page_id_t page_id, page_id_t parent_id = INVALID_PAGE_ID, int max_size = LEAF_PAGE_SIZE);
 
+
   // helper methods
   page_id_t GetNextPageId() const;
 
@@ -49,6 +50,10 @@ public:
   int KeyIndex(const KeyType &key, const KeyComparator &comparator) const;
 
   const MappingType &GetItem(int index);
+
+  void FetchValues(const KeyType& key, bool left, bool key_included, std::unordered_set<ValueType>& ans_set, const KeyComparator& comparator);
+
+  void FetchAllValues(std::unordered_set<ValueType>& ans_set);
 
   // insert and delete methods
   int Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator);

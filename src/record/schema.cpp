@@ -71,11 +71,9 @@ uint32_t Schema::DeserializeFrom(char *buf, Schema *&schema, MemHeap *heap) {
       STEP_FORWARD(buf, ser_cnt, steps);
       vec[i] = col;
     }
-
     schema = new (mem) Schema(vec);
   }
 
-  ASSERT(ser_cnt == schema->GetSerializedSize(), "Schema::DeserializeFrom : MisAligned ser_cnt");
-
+  //ASSERT(ser_cnt == schema->GetSerializedSize(), "Schema::DeserializeFrom : MisAligned ser_cnt");
   return ser_cnt;
 }

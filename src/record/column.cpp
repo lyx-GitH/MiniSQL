@@ -35,7 +35,7 @@ Column::Column(const Column *other)
 
 uint32_t Column::SerializeTo(char *buf) const {
   // replace with your code here
-  ASSERT(buf == nullptr, "Column::SerializeTo: Passing Null Buf");
+  ASSERT(buf != nullptr, "Column::SerializeTo: Passing Null Buf");
   uint32_t ser_size = 0;
 
   // write magic number
@@ -109,10 +109,11 @@ uint32_t Column::DeserializeFrom(char *buf, Column *&column, MemHeap *heap) {
 
   // read string
   name_len = MACH_READ_INT32(buf);
+  MOVE_FORWARD(buf, ser_cnt, uint32_t);
   std::string name;
 
   for (i = 0; i < name_len; i++) {
-    name += buf[i];
+    name.append(1, buf[0]);
     ++buf;
     ++ser_cnt;
   }
