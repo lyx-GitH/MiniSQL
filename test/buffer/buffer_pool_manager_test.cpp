@@ -6,8 +6,9 @@
 #include "gtest/gtest.h"
 
 TEST(BufferPoolManagerTest, BinaryDataTest) {
-  const std::string db_name = "bpm_test.db";
+  const std::string db_name = "bpm_test1.db";
   const size_t buffer_pool_size = 10;
+//  remove(db_name.c_str());
 
   std::random_device r;
   std::default_random_engine rng(r());

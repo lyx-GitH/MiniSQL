@@ -5,7 +5,10 @@
 bool TableHeap::InsertTuple(Row &row, Transaction *txn) {
   // too large to be stored inside.
   auto row_size = row.GetSerializedSize(schema_) + TUPLE_SIZE;
-  if (row_size >= PAGE_SIZE) return false;
+  if (row_size >= PAGE_SIZE) {
+    LOG(INFO) <<"Wrong !!!";
+    return false;
+  }
   bool isInsertSuccess = false;
   if (row_size > 0 - Pages.begin()->first) {
 //    LOG(INFO) << Pages.begin()->first;
@@ -155,6 +158,7 @@ bool TableHeap::GetTuple(Row *row, Transaction *txn) {
 
   bool isGet = page->GetTuple(row, schema_, txn, lock_manager_);
   buffer_pool_manager_->UnpinPage(page_id, false);
+  ASSERT(isGet, "xxx");
   return isGet;
 }
 

@@ -22,10 +22,10 @@ TEST(BPlusTreeTests, SampleTest) {
   // Init engine
   DBStorageEngine engine(db_name);
   BasicComparator<int> comparator;
-  BPlusTree<int, int, BasicComparator<int>> tree(0, engine.bpm_, comparator, 4, 4);
+  BPlusTree<int, int, BasicComparator<int>> tree(0, engine.bpm_, comparator, 17, 17);
   TreeFileManagers mbr("tree_");
   // Prepare data
-  const int n = 60;
+  const int n = 600;
   const int removed = n >> 1;
   vector<int> keys;
   vector<int> values;
@@ -49,6 +49,8 @@ TEST(BPlusTreeTests, SampleTest) {
     tree.Insert(keys[i], values[i]);
   }
 
+  tree.PrintTree(std::cout);
+
   ASSERT_TRUE(tree.Check());
   // Search keys
   vector<int> ans;
@@ -66,7 +68,7 @@ TEST(BPlusTreeTests, SampleTest) {
     tree.Remove(delete_seq[i]);
   }
 
-  tree.PrintTree(std::cout);
+
   // Check valid
   ans.clear();
   for (int i = 0; i < removed; i++) {

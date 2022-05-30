@@ -32,11 +32,13 @@ TEST(BPlusTreeTests, BPlusTreeIndexGenericKeyTest) {
 }
 
 TEST(BPlusTreeTests, BPlusTreeIndexSimpleTest) {
+  remove(db_name.c_str());
   using INDEX_KEY_TYPE = GenericKey<32>;
   using INDEX_COMPARATOR_TYPE = GenericComparator<32>;
   using BP_TREE_INDEX = BPlusTreeIndex<INDEX_KEY_TYPE, RowId, INDEX_COMPARATOR_TYPE>;
   DBStorageEngine engine(db_name);
   SimpleMemHeap heap;
+  const int size = 500;
   std::vector<Column *> columns = {ALLOC_COLUMN(heap)("id", TypeId::kTypeInt, 0, false, false),
                                    ALLOC_COLUMN(heap)("name", TypeId::kTypeChar, 64, 1, true, false),
                                    ALLOC_COLUMN(heap)("account", TypeId::kTypeFloat, 2, true, false)};
@@ -44,16 +46,17 @@ TEST(BPlusTreeTests, BPlusTreeIndexSimpleTest) {
   const TableSchema table_schema(columns);
   auto *index_schema = Schema::ShallowCopySchema(&table_schema, index_key_map, &heap);
   auto *index = ALLOC(heap, BP_TREE_INDEX)(0, index_schema, engine.bpm_);
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < size; i++) {
     std::vector<Field> fields{Field(TypeId::kTypeInt, i),
                               Field(TypeId::kTypeChar, const_cast<char *>("minisql"), 7, true)};
     Row row(fields);
     RowId rid(1000, i);
     ASSERT_EQ(DB_SUCCESS, index->InsertEntry(row, rid, nullptr));
   }
+
   // Test Scan
   std::vector<RowId> ret;
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < size; i++) {
     std::vector<Field> fields{Field(TypeId::kTypeInt, i),
                               Field(TypeId::kTypeChar, const_cast<char *>("minisql"), 7, true)};
     Row row(fields);

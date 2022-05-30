@@ -43,7 +43,7 @@ TEST(TableHeapTest, TableHeapSampleTest) {
   remove(db_file_name.c_str());
   DBStorageEngine engine(db_file_name);
   SimpleMemHeap heap;
-  const int row_nums = 5000;
+  const int row_nums = 70000;
   // create schema
   std::vector<Column *> columns = {
           ALLOC_COLUMN(heap)("id", TypeId::kTypeInt, 0, false, false),
@@ -69,17 +69,19 @@ TEST(TableHeapTest, TableHeapSampleTest) {
     row_values[row.GetRowId().Get()] = fields;
     delete[] characters;
   }
-
+  int i=0;
   ASSERT_EQ(row_nums, row_values.size());
   for (auto row_kv : row_values) {
     Row row(RowId(row_kv.first));
-    table_heap->GetTuple(&row, nullptr);
+    bool r = table_heap->GetTuple(&row, nullptr);
+    ASSERT(r, "Invalid Tup Ftech");
     ASSERT_EQ(schema.get()->GetColumnCount(), row.GetFields().size());
     for (size_t j = 0; j < schema.get()->GetColumnCount(); j++) {
       ASSERT_EQ(CmpBool::kTrue, row.GetField(j)->CompareEquals(row_kv.second->at(j)));
     }
     // free spaces
     delete row_kv.second;
+    i++;
   }
 }
 
