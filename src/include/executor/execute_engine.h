@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <string>
 #include <unordered_map>
+#include <filesystem>
 #include "common/dberr.h"
 #include "common/instance.h"
 #include "common/macros.h"

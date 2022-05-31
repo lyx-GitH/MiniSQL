@@ -256,7 +256,7 @@ void BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>::FetchValues(const Key
     if(key_included && key_index < GetSize() && comparator(key, array_[key_index].first) == 0)
       ans_set.insert(array_[key_index].second);
     for(int i=0; i<key_index; i++)
-      ans_set.insert(array_[key_index].second);
+      ans_set.insert(array_[i].second);
   } else {
     if (key_included && comparator(key, array_[key_index].first) == 0 && key_index < GetSize())
       ans_set.insert(array_[key_index].second);

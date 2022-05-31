@@ -38,7 +38,7 @@ TEST(BPlusTreeTests, BPlusTreeIndexSimpleTest) {
   using BP_TREE_INDEX = BPlusTreeIndex<INDEX_KEY_TYPE, RowId, INDEX_COMPARATOR_TYPE>;
   DBStorageEngine engine(db_name);
   SimpleMemHeap heap;
-  const int size = 500;
+  const int size = 50000;
   std::vector<Column *> columns = {ALLOC_COLUMN(heap)("id", TypeId::kTypeInt, 0, false, false),
                                    ALLOC_COLUMN(heap)("name", TypeId::kTypeChar, 64, 1, true, false),
                                    ALLOC_COLUMN(heap)("account", TypeId::kTypeFloat, 2, true, false)};

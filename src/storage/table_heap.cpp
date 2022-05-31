@@ -111,6 +111,7 @@ void TableHeap::FreeHeap() {
     for (auto &page : page_batch.second) buffer_pool_manager_->DeletePage(page);
   }
   first_page_id_ = INVALID_PAGE_ID;
+  Pages.clear();
 }
 
 void TableHeap::FetchAllIds(std::unordered_set<RowId> &ans_set) {

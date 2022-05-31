@@ -6,6 +6,7 @@
 static string db_file_name = "catalog_test.db";
 
 TEST(CatalogTest, CatalogMetaTest) {
+  remove(db_file_name.c_str());
   SimpleMemHeap heap;
   char *buf = reinterpret_cast<char *>(heap.Allocate(PAGE_SIZE));
   CatalogMeta *meta = CatalogMeta::NewInstance(&heap);
@@ -69,6 +70,7 @@ TEST(CatalogTest, CatalogTableTest) {
 }
 
 TEST(CatalogTest, CatalogIndexTest) {
+  remove(db_file_name.c_str());
   SimpleMemHeap heap;
   /** Stage 1: Testing simple operation */
   auto db_01 = new DBStorageEngine(db_file_name, true);
@@ -94,7 +96,10 @@ TEST(CatalogTest, CatalogIndexTest) {
   ASSERT_EQ(DB_COLUMN_NAME_NOT_EXIST, r2);
   auto r3 = catalog_01->CreateIndex("table-1", "index-1", index_keys, &txn, index_info);
   ASSERT_EQ(DB_SUCCESS, r3);
-  for (int i = 0; i < 10; i++) {
+
+  const int size = 1000;
+
+  for (int i = 0; i < size; i++) {
     std::vector<Field> fields{
             Field(TypeId::kTypeInt, i),
             Field(TypeId::kTypeChar, const_cast<char *>("minisql"), 7, true)
@@ -105,7 +110,8 @@ TEST(CatalogTest, CatalogIndexTest) {
   }
   // Scan Key
   std::vector<RowId> ret;
-  for (int i = 0; i < 10; i++) {
+
+  for (int i = 0; i < size; i++) {
     std::vector<Field> fields{
             Field(TypeId::kTypeInt, i),
             Field(TypeId::kTypeChar, const_cast<char *>("minisql"), 7, true)
@@ -118,13 +124,14 @@ TEST(CatalogTest, CatalogIndexTest) {
   delete db_01;
   /** Stage 2: Testing catalog loading */
   auto db_02 = new DBStorageEngine(db_file_name, false);
+  ASSERT(db_02->catalog_mgr_->get_meta(), "null meta");
   auto &catalog_02 = db_02->catalog_mgr_;
   auto r4 = catalog_02->CreateIndex("table-1", "index-1", index_keys, &txn, index_info);
   ASSERT_EQ(DB_INDEX_ALREADY_EXIST, r4);
   IndexInfo *index_info_02 = nullptr;
   ASSERT_EQ(DB_SUCCESS, catalog_02->GetIndex("table-1", "index-1", index_info_02));
   std::vector<RowId> ret_02;
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < size; i++) {
     std::vector<Field> fields{
             Field(TypeId::kTypeInt, i),
             Field(TypeId::kTypeChar, const_cast<char *>("minisql"), 7, true)

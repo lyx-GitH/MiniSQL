@@ -296,14 +296,7 @@ INDEX_TEMPLATE_ARGUMENTS
 int B_PLUS_TREE_INTERNAL_PAGE_TYPE::BinarySearchNode(const KeyType &key, const KeyComparator &comparator) const {
   if (GetSize() <= 1)
     return 0;
-//  if(GetSize() == 2) {
-//    return comparator(key, array_[1].first)>=0 ? 1 : 0;
-//  }
-//
-//  if(comparator(key, array_[1].first) < 0)
-//    return 0;
-//  if(comparator(key, array_[1].first) < 0)
-//    return 0;
+
   //TODO: Here may cause bugs
   int left = 1;//0
   int right = GetSize()- 1;

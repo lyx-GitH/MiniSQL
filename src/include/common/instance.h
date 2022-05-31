@@ -23,6 +23,7 @@ public:
     disk_mgr_ = new DiskManager(db_file_name_);
     bpm_ = new BufferPoolManager(buffer_pool_size, disk_mgr_);
     catalog_mgr_ = new CatalogManager(bpm_, nullptr, nullptr, init);
+    ASSERT(catalog_mgr_->get_meta(), "null meta");
     // Allocate static page for db storage engine
     if (init) {
       page_id_t id;
@@ -30,15 +31,18 @@ public:
       ASSERT(bpm_->IsPageFree(INDEX_ROOTS_PAGE_ID), "Header page not free.");
       ASSERT(bpm_->NewPage(id) != nullptr && id == CATALOG_META_PAGE_ID, "Failed to allocate catalog meta page.");
       ASSERT(bpm_->NewPage(id) != nullptr && id == INDEX_ROOTS_PAGE_ID, "Failed to allocate header page.");
+//      auto roots_page = reinterpret_cast<>
       bpm_->UnpinPage(CATALOG_META_PAGE_ID, false);
       bpm_->UnpinPage(INDEX_ROOTS_PAGE_ID, false);
     } else {
       ASSERT(!bpm_->IsPageFree(CATALOG_META_PAGE_ID), "Invalid catalog meta page.");
       ASSERT(!bpm_->IsPageFree(INDEX_ROOTS_PAGE_ID), "Invalid header page.");
     }
+
   }
 
   ~DBStorageEngine() {
+    catalog_mgr_->write_back();
     delete catalog_mgr_;
     delete bpm_;
     delete disk_mgr_;

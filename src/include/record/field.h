@@ -179,6 +179,46 @@ class Field {
     return out;
   }
 
+  void print(std::ostream& out = std::cout) const{
+    if (IsNull())
+      out << "null";
+    else
+      switch (type_id_) {
+        case kTypeInvalid:
+          out << "Invalid.";
+          break;
+        case kTypeInt:
+          out << value_.integer_;
+          break;
+        case kTypeFloat:
+          out << value_.float_;
+          break;
+        case kTypeChar:
+          out << value_.chars_;
+          break;
+      }
+  }
+
+  std::string toString() {
+    if (IsNull())
+      return "null";
+    else
+      switch (type_id_) {
+        case kTypeInvalid:
+          return "Invalid.";
+          break;
+        case kTypeInt:
+          return std::to_string( value_.integer_);
+          break;
+        case kTypeFloat:
+          return std::to_string(value_.float_);
+          break;
+        case kTypeChar:
+          return  std::string (value_.chars_);
+          break;
+      }
+  }
+
  protected:
   union Val {
     int32_t integer_;

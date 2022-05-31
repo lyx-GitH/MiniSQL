@@ -6,7 +6,7 @@
 #include "parser/syntax_tree_printer.h"
 #include "utils/tree_file_mgr.h"
 
-#define SYNTAX_OUT
+//#define SYNTAX_OUT
 
 extern "C" {
 int yyparse(void);
@@ -96,7 +96,7 @@ int main(int argc, char **argv) {
       printf("\033[1;31m[Failed] \033[0m in %llu ms, code: %d\n",
              std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count(), res);
 
-    sleep(1);
+    //sleep(1);
 
     // clean memory after parse
     MinisqlParserFinish();

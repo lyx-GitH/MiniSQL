@@ -107,64 +107,11 @@ bool BufferPoolManager::DeletePage(page_id_t page_id) {
   pages_[frame_of_page].is_dirty_ = false;
   pages_[frame_of_page].page_id_ = INVALID_PAGE_ID;
   return true;
-  //  // 0.   Make sure you call DeallocatePage!
-  //  // 1.   Search the page table for the requested page (P).
-  //  auto map_it1 = page_table_.find(page_id);
-  //
-  //  // 1.   If P does not exist, return true.
-  //  if (map_it1 == page_table_.end())
-  //    return true;
-  //
-  //  else {
-  //    Page *p;
-  //    for (p = pages_; p->page_id_ != INVALID_PAGE_ID; ++p) {
-  //      if (p->page_id_ == page_id)  // find the page to be flushed
-  //        break;
-  //    }
-  //
-  //    // 2.   If P exists, but has a non-zero pin-count, return false. Someone is using the page.
-  //    if (p->GetPinCount() != 0) return false;
-  //    // 3.   Otherwise, P can be deleted. Remove P from the page table, reset its metadata
-  //    //      and return it to the free list.
-  //    else {
-  //      free_list_.push_back(map_it1->second);
-  //      page_table_.erase(page_id);
-  //      DeallocatePage(page_id);
-  //
-  //      p->page_id_ = INVALID_PAGE_ID;
-  //      p->is_dirty_ = false;
-  //      p->ResetMemory();
-  //
-  //      return true;
-  //    }
-  //  }
-  //  //  return true;
 }
 
 bool BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty) {
-  //  size_t cnt = 0;
-  //  for (Page *p = pages_; cnt < pool_size_; ++p, ++cnt) {
-  //    if (p->page_id_ == page_id)  // find the page to be unpinned
-  //    {
-  //      if (is_dirty) p->is_dirty_ = true;
-  //
-  //      ASSERT(p->pin_count_ >= 0, "PAGE PIN COUNT INVALID");
-  //
-  //      --p->pin_count_;
-  //
-  //      if (p->pin_count_ == 0) {
-  //        auto map_it = page_table_.find(p->page_id_);
-  //        if (map_it != page_table_.end()) {
-  //          replacer_->Unpin(map_it->second);
-  //          return true;
-  //        }
-  //      }
-  //      break;
-  //    }
-  //  }
-  //  ASSERT(page_table_.count(page_id), "Invalid PageId");
   if (page_table_.count(page_id) == 0) {
-    LOG(INFO) << "no such page id " << page_id;
+//    LOG(INFO) << "no such page id " << page_id;
     return false;
   }
   auto frame_id = page_table_[page_id];

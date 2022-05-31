@@ -21,7 +21,14 @@ BPLUSTREE_TYPE::BPlusTree(index_id_t index_id, BufferPoolManager *buffer_pool_ma
       buffer_pool_manager_(buffer_pool_manager),
       comparator_(comparator),
       leaf_max_size_(leaf_max_size),
-      internal_max_size_(internal_max_size) {}
+      internal_max_size_(internal_max_size) {
+  auto index_root_page = TO_TYPE(IndexRootsPage*, buffer_pool_manager->FetchPage(INDEX_ROOTS_PAGE_ID)->GetData());
+  if((unsigned int)(index_root_page->GetIndexCount()) > index_id){
+    index_root_page->GetRootId(index_id, &root_page_id_);
+  }
+
+  buffer_pool_manager->UnpinPage(INDEX_ROOTS_PAGE_ID, false);
+}
 
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::Destroy(BPlusTreePage *node) {
@@ -46,6 +53,8 @@ void BPLUSTREE_TYPE::Destroy() {
   if (IsEmpty()) return;
   auto root_page = reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(root_page_id_)->GetData());
   Destroy(root_page);
+  root_page_id_ = INVALID_PAGE_ID;
+  UpdateRootPageId();
 }
 
 /*
@@ -57,6 +66,9 @@ bool BPLUSTREE_TYPE::IsEmpty() const { return root_page_id_ == INVALID_PAGE_ID; 
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::RangeScan(const KeyType &key, std::unordered_set<ValueType> &ans_set, bool to_left,
                                bool key_included) {
+  if(IsEmpty() || root_page_id_ == INVALID_PAGE_ID)
+    return;
+
   auto leaf = FindLeafPage(key);
   ASSERT(leaf != nullptr, "Invalid Fetch");
   auto target_leaf = TO_TYPE(LeafPage *, leaf->GetData());
@@ -587,15 +599,16 @@ Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost) {
  */
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::UpdateRootPageId(int insert_record) {
-  auto page = buffer_pool_manager_->FetchPage(0);
-  ASSERT(page != nullptr, "BPLUSTREE_TYPE::UpdateRootPageId : Invalid Root Index Id");
-  auto index_page = reinterpret_cast<IndexRootsPage *>(page->GetData());
-  if (insert_record) {
-    ASSERT(index_page->Insert(index_id_, root_page_id_), "BPLUSTREE_TYPE::UpdateRootPageId : Insert Failed");
-  } else {
-    ASSERT(index_page->Update(index_id_, root_page_id_), "BPLUSTREE_TYPE::UpdateRootPageId : Update Failed");
-  }
-  buffer_pool_manager_->UnpinPage(page->GetPageId(), true);
+  auto index_root_page= TO_TYPE(IndexRootsPage*, buffer_pool_manager_->FetchPage(INDEX_ROOTS_PAGE_ID)->GetData());
+  ASSERT(index_root_page != nullptr, "invalid root fetch");
+  bool res;
+  if(insert_record)
+    res = index_root_page->Insert(index_id_, root_page_id_);
+  else
+    res = index_root_page->Update(index_id_, root_page_id_);
+
+  ASSERT(res, "Wrong Root Update");
+  buffer_pool_manager_->UnpinPage(INDEX_ROOTS_PAGE_ID, true);
 }
 
 /**

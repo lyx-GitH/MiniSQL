@@ -97,6 +97,8 @@ class TableHeap {
    */
   void FreeHeap();
 
+
+
   /**
    * @return the begin iterator of this table
    */

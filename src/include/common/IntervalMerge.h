@@ -11,7 +11,7 @@
 void set_or(std::unordered_set<RowId>& a, std::unordered_set<RowId>& b){
   if(b.size() > a.size())
     std::swap(a, b);
-  for(auto& rid: b) {
+  for(auto rid: b) {
     if(a.find(rid) == a.end())
       a.insert(rid);
   }
@@ -20,11 +20,11 @@ void set_or(std::unordered_set<RowId>& a, std::unordered_set<RowId>& b){
 void set_and(std::unordered_set<RowId>& a, std::unordered_set<RowId> &b) {
   if(a.size() > b.size())
     std::swap(a, b);
-  for(auto& rid : a){
-    if(b.find(rid) == b.end()) {
-      a.erase(rid);
-    }
-  }
+  std::unordered_set<RowId> ans;
+  for(auto rid : a)
+    if(b.count(rid))
+      ans.insert(rid);
+  swap(ans, a);
 }
 
 #endif  // MINISQL_INTERVALMERGE_H

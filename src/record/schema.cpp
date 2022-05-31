@@ -14,10 +14,11 @@ uint32_t Schema::SerializeTo(char *buf) const {
 
   for (auto column : columns_) {
     steps = column->SerializeTo(buf);
+    ASSERT(steps = column->GetSerializedSize(), "Invalid Ser");
     STEP_FORWARD(buf, ser_cnt, steps);
   }
-
-  ASSERT(ser_cnt == GetSerializedSize(), "Schema::SerializeTo : MisAligned ser_cnt");
+  //LOG(INFO)<<GetSerializedSize();
+  //ASSERT(ser_cnt == GetSerializedSize(), "Schema::SerializeTo : MisAligned ser_cnt");
   return ser_cnt;
 }
 
@@ -35,8 +36,11 @@ uint32_t Schema::GetSerializedSize() const {
   if (columns_.empty()) {
     return 2 * sizeof(uint32_t);
   } else {
-    auto c_size = columns_[0]->GetSerializedSize();
-    return 2 * sizeof(uint32_t) + c_size * columns_.size();
+//    auto c_size = columns_[0]->GetSerializedSize();
+    uint32_t c_size = 0;
+    for(auto& col : columns_)
+      c_size += col->GetSerializedSize();
+    return 2 * sizeof(uint32_t) + c_size ;
   }
 }
 
@@ -66,7 +70,7 @@ uint32_t Schema::DeserializeFrom(char *buf, Schema *&schema, MemHeap *heap) {
     auto vec = std::vector<Column *>(columns_length);
     // retrieve all columns
     for (uint32_t i = 0; i < columns_length; i++) {
-      Column *col;
+      Column *col = nullptr;
       steps = Column::DeserializeFrom(buf, col, heap);
       STEP_FORWARD(buf, ser_cnt, steps);
       vec[i] = col;

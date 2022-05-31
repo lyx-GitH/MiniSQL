@@ -38,13 +38,6 @@ void LRUReplacer::Unpin(frame_id_t frame_id) {
       lru_list.push_front(frame_id);
     }
   }
-
-  //  else // exists
-  //  {
-  //
-  //    // overlook it
-  //
-  //  }
 }
 
 size_t LRUReplacer::Size() { return lru_list.size(); }

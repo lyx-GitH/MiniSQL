@@ -20,6 +20,8 @@ void output(const uint32_t len, const std::string &str) {
 }
 
 ExecuteEngine::ExecuteEngine() {
+  std::cout << "MiniSQL init ..." << std::endl;
+  std::cout << "working dir: " << db_root_dir.string() << std::endl;
   if (!filesystem::exists(db_root_dir)) filesystem::create_directories(db_root_dir);
   std::filesystem::directory_iterator db_files(db_root_dir);
   // list all files
@@ -31,7 +33,6 @@ ExecuteEngine::ExecuteEngine() {
       dbs_.insert(std::make_pair(file_name, database));
       generate_db_struct(file_name, database);
       std::cout << "database found: " << file_name << std::endl;
-      std::cout << file.path() << std::endl;
     }
   }
 }
@@ -194,7 +195,7 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
   }
 
   if (!parse_column_definitions(table_name, cur)) {
-    ENABLE_ERROR << "create table failed" << DISABLED;
+    //    ENABLE_ERROR << "create table failed" << DISABLED;
     return DB_FAILED;
   }
 
@@ -210,8 +211,8 @@ dberr_t ExecuteEngine::ExecuteDropTable(pSyntaxNode ast, ExecuteContext *context
     return DB_FAILED;
   }
   auto target_db = dbs_.find(current_db_)->second;
-  if (target_db->catalog_mgr_->DropTable(std::string{ast->val_}) == DB_FAILED) return DB_TABLE_NOT_EXIST;
-  database_structure[current_db_].erase(std::string{ast->val_});
+  if (target_db->catalog_mgr_->DropTable(std::string{ast->child_->val_}) == DB_FAILED) return DB_TABLE_NOT_EXIST;
+  database_structure[current_db_].erase(std::string{ast->child_->val_});
   return DB_SUCCESS;
 }
 
@@ -324,7 +325,7 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
   auto col_node = ast->child_;
   std::string table_name{col_node->next_->val_};
   TableInfo *table_info = nullptr;
-  if (dbs_[current_db_]->catalog_mgr_->GetTable(table_name, table_info) == DB_FAILED) {
+  if (dbs_[current_db_]->catalog_mgr_->GetTable(table_name, table_info) != DB_SUCCESS) {
     ENABLE_ERROR << " table " << table_name << " not exist" << DISABLED;
     return DB_TABLE_NOT_EXIST;
   }
@@ -591,7 +592,7 @@ void ExecuteEngine::make_db_tuple(pSyntaxNode head, const Schema &schema,
       };
 
       case (kNodeNumber): {
-        if (table_columns[i]->GetType() != kTypeFloat || table_columns[i]->GetType() != kTypeInt) goto ERROR;
+        if (table_columns[i]->GetType() != kTypeFloat && table_columns[i]->GetType() != kTypeInt) goto ERROR;
         if (table_columns[i]->GetType() == kTypeFloat) {
           tup.emplace_back(TypeId::kTypeFloat, (float)atof(cur->val_));
         } else if (table_columns[i]->GetType() == kTypeInt) {
@@ -684,21 +685,24 @@ bool ExecuteEngine::parse_column_definitions(const string &table_name, pSyntaxNo
   TableInfo *table_info = nullptr;
   IndexInfo *index_info = nullptr;
   std::vector<Column *> table_defs;
-  int i = 0;
+  std::unordered_map<std::string, std::size_t> column_index;
+  std::size_t i = 0;
 
   while (head && head->type_ != kNodeColumnList) {
     bool is_unique = false;
     bool is_nullable = true;
-    if (strcmp(head->val_, "unique") == 0)  // this is a unique
+    if (head->val_ && strcmp(head->val_, "unique") == 0)  // this is a unique
       is_unique = true;
-    else if (strcmp(head->val_, "not null") == 0)  // not null
+    else if (head->val_ && strcmp(head->val_, "not null") == 0)  // not null
       is_nullable = false;
     Column *column = parse_single_column(head->child_, i, is_nullable, is_unique);
-    i++;
+
     if (!column) {
       for (auto col : table_defs) delete col;
       return false;
     }
+    column_index.insert(std::make_pair(column->GetName(), i));
+    i++;
     table_defs.push_back(column);
 
     head = head->next_;
@@ -722,6 +726,20 @@ bool ExecuteEngine::parse_column_definitions(const string &table_name, pSyntaxNo
       pm_keys.emplace_back(head->val_);
       head = head->next_;
     }
+//    bool unique = false;
+    for (auto &key_name : pm_keys) {
+      if (column_index.count(key_name) == 0) {
+        dbs_[current_db_]->catalog_mgr_->DropTable(table_name);
+        goto ERROR;
+      }
+//      if (table_defs[column_index[key_name]]->IsUnique()) {
+//        unique = true;
+//      }
+    }
+//    if (!unique) {
+//      dbs_[current_db_]->catalog_mgr_->DropTable(table_name);
+//      goto ERROR;
+//    }
 
     dbs_[current_db_]->catalog_mgr_->CreateIndex(table_name, "_primary_keys", pm_keys, nullptr, index_info);
     database_structure[current_db_][table_name].insert(std::make_pair("_primary_keys", std::move(key_set)));
@@ -838,7 +856,7 @@ Field ExecuteEngine::get_field(pSyntaxNode ast, const TableInfo *table_info) {
   else if (val_node->type_ == kNodeString && column->GetType() == kTypeChar)
     return Field(kTypeChar, val_node->val_, strlen(val_node->val_), true);
   else if (val_node->type_ == kNodeNumber && column->GetType() == kTypeFloat)
-    return Field(kTypeChar, (float)(atof(val_node->val_)));
+    return Field(kTypeFloat, (float)(atof(val_node->val_)));
   else if (val_node->type_ == kNodeNumber && column->GetType() == kTypeInt)
     return Field(kTypeInt, atoi(val_node->val_));
   else
@@ -861,40 +879,50 @@ IndexInfo *ExecuteEngine::find_index(const TableInfo *table_info, const std::str
 void ExecuteEngine::pretty_print(TableInfo *table_info, std::vector<std::string> &used_columns,
                                  std::unordered_map<std::string, std::size_t> &column_index,
                                  std::unordered_set<RowId> &ans_set) {
-  int n_row = ans_set.size();
-  std::vector<std::vector<Field *>> tuples;
+
+
   for (auto &rid : ans_set) {
     Row row(rid);
     table_info->GetTableHeap()->GetTuple(&row, nullptr);
-    tuples.push_back(std::move(row.GetFields()));
-  }
-  std::vector<uint32_t> max_length(used_columns.size() + 1);
-  max_length[0] = std::to_string(n_row + 1).length();
-  for (std::size_t i = 1; i < max_length.size(); i++) {
-    auto col_index = column_index[used_columns[i - 1]];
-    for (auto &tuple : tuples) {
-      max_length[i] = max(max_length[i], tuple[col_index]->GetLength());
-    }
-    max_length[i]++;
-  }
-  std::string line = "+";
-  for (auto len : max_length) {
-    line.append(len, '-');
-    line += '+';
-  }
-  std::cout << line << std::endl;
-  for (std::size_t i = 0; i < tuples.size(); i++) {
-    // print index
-    std::cout << '|';
-    output(max_length[0], to_string(i));
-    std::cout << '|';
+    for(auto& f : row.GetFields())
+      std::cout <<f->toString()<<" ";
+    std::cout << std::endl;
 
-    for (uint32_t j = 0; j < tuples[i].size(); j++) {
-      output(max_length[j + 1], tuples[i][j]);
-      std::cout << '|';
-    }
-    std::cout << std::endl << line << std::endl;
   }
+  std::cout << ans_set.size() <<" rows effected"<<std::endl;
+//  for(auto& vec : tuples) {
+//    for(auto t : vec){
+//      t->print();
+//    }
+//    std::cout << std::endl;
+//  }
+//  std::vector<uint32_t> max_length(used_columns.size() + 1);
+//  max_length[0] = std::to_string(n_row + 1).length();
+//  for (std::size_t i = 1; i < max_length.size(); i++) {
+//    auto col_index = column_index[used_columns[i - 1]];
+//    for (auto &tuple : tuples) {
+//      max_length[i] = max(max_length[i], tuple[col_index]->GetLength());
+//    }
+//    max_length[i]++;
+//  }
+//  std::string line = "+";
+//  for (auto len : max_length) {
+//    line.append(len, '-');
+//    line += '+';
+//  }
+//  std::cout << line << std::endl;
+//  for (std::size_t i = 0; i < tuples.size(); i++) {
+//    // print index
+//    std::cout << '|';
+//    output(max_length[0], to_string(i));
+//    std::cout << '|';
+//
+//    for (uint32_t j = 0; j < tuples[i].size(); j++) {
+//      output(max_length[j + 1], tuples[i][j]);
+//      std::cout << '|';
+//    }
+//    std::cout << std::endl << line << std::endl;
+//  }
 }
 void ExecuteEngine::do_update(const TableInfo *table_info, map<string, Field> new_values,
                               unordered_set<RowId> effected_rows, unordered_map<string, size_t> column_index) {

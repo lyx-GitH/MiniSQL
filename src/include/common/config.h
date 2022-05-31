@@ -3,6 +3,14 @@
 
 #include <cstdint>
 #include <cstring>
+#include <functional>
+#include <utility>
+#include <filesystem>
+#include <string>
+#include <vector>
+#include <unordered_set>
+#include <map>
+#include <unordered_map>
 
 static constexpr int INVALID_PAGE_ID = -1;           // invalid page id
 static constexpr int INVALID_FRAME_ID = -1;          // invalid transaction id
