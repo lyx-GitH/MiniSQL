@@ -169,7 +169,11 @@ bool BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty) {
   }
   auto frame_id = page_table_[page_id];
   Page *p = &pages_[frame_id];
-  if (is_dirty) p->is_dirty_ = true;
+  if (is_dirty) 
+  {
+    disk_manager_->WritePage(page_id, pages_[page_table_[page_id]].GetData());
+    p->is_dirty_ = false;
+  }   
   ASSERT(p->pin_count_ >= 0, "PAGE PIN COUNT INVALID");
   --p->pin_count_;
   if (p->pin_count_) return false;
