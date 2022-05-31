@@ -38,7 +38,7 @@ const comp_func isNull = [](const Field &a, const Field &b) -> bool { return a.I
 const comp_func notNull = [](const Field &a, const Field &b) -> bool { return !a.IsNull(); };
 
 const static std::unordered_map<std::string, comp_func> comparisons{
-    {sGt, gt}, {sLt, lt}, {sLte, lte}, {sGte, gte}, {sEq, neq}, {sNeq, eq}, {sIsNNull, notNull}, {sIsNull, isNull}};
+    {sGt, gt}, {sLt, lt}, {sLte, lte}, {sGte, gte}, {sEq, eq}, {sNeq, neq}, {sIsNNull, notNull}, {sIsNull, isNull}};
 extern const std::unordered_map<std::string, comp_func> comparisons;
 
 struct index_com_args {

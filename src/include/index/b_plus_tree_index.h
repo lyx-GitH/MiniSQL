@@ -3,6 +3,7 @@
 
 #include "index/b_plus_tree.h"
 #include "index/index.h"
+#include "page/index_roots_page.h"
 
 #define BPLUSTREE_INDEX_TYPE BPlusTreeIndex<KeyType, ValueType, KeyComparator>
 
@@ -22,6 +23,10 @@ public:
   void RangeScanKey(const Row& key, std::unordered_set<RowId>& ans_set, bool to_left, bool key_included) override;
 
   dberr_t Destroy() override;
+
+//  dberr_t Remove() override;
+
+
 
   INDEXITERATOR_TYPE GetBeginIterator();
 

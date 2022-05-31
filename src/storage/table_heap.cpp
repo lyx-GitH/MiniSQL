@@ -6,12 +6,22 @@ bool TableHeap::InsertTuple(Row &row, Transaction *txn) {
   // too large to be stored inside.
   auto row_size = row.GetSerializedSize(schema_) + TUPLE_SIZE;
   if (row_size >= PAGE_SIZE) {
-    LOG(INFO) <<"Wrong !!!";
+    LOG(INFO) << "Wrong !!!";
     return false;
   }
   bool isInsertSuccess = false;
-  if (row_size > 0 - Pages.begin()->first) {
-//    LOG(INFO) << Pages.begin()->first;
+  if (IsEmpty()) {
+    auto FirstPage = reinterpret_cast<TablePage *>(buffer_pool_manager_->NewPage(first_page_id_));
+    ASSERT(FirstPage != nullptr && first_page_id_ != INVALID_PAGE_ID,
+           "TableHeap::InsertTuple Invalid Table Construction");
+    FirstPage->Init(first_page_id_, INVALID_PAGE_ID, log_manager_, txn);
+    FirstPage->SetNextPageId(INVALID_PAGE_ID);
+    isInsertSuccess = FirstPage->InsertTuple(row, schema_, txn, lock_manager_, log_manager_);
+    INSERT(Pages, FirstPage);
+    buffer_pool_manager_->FlushPage(first_page_id_);
+    buffer_pool_manager_->UnpinPage(first_page_id_, true);
+  } else if (row_size > 0 - Pages.begin()->first) {
+    //    LOG(INFO) << Pages.begin()->first;
     // No page is enough for insertion
     page_id_t new_page_id = INVALID_PAGE_ID;
     auto new_page = reinterpret_cast<TablePage *>(buffer_pool_manager_->NewPage(new_page_id));
@@ -26,8 +36,10 @@ bool TableHeap::InsertTuple(Row &row, Transaction *txn) {
 
     first_page_id_ = new_page->GetTablePageId();
     isInsertSuccess = new_page->InsertTuple(row, schema_, txn, lock_manager_, log_manager_);
+    ASSERT(isInsertSuccess, "invalid insert");
     INSERT(Pages, new_page);
     buffer_pool_manager_->UnpinPage(new_page->GetTablePageId(), true);
+    buffer_pool_manager_->FlushPage(old_page->GetTablePageId());
     buffer_pool_manager_->UnpinPage(old_page->GetTablePageId(), true);
   } else {
     auto that_page_id = *(Pages.begin()->second.begin());
@@ -37,6 +49,7 @@ bool TableHeap::InsertTuple(Row &row, Transaction *txn) {
     isInsertSuccess = that_page->InsertTuple(row, schema_, txn, lock_manager_, log_manager_);
     INSERT(Pages, that_page);
     buffer_pool_manager_->UnpinPage(that_page->GetTablePageId(), true);
+    ASSERT(isInsertSuccess, "invalid insert");
   }
 
   return isInsertSuccess;
@@ -152,6 +165,8 @@ void TableHeap::FetchId(std::unordered_set<RowId> &ans_set, std::size_t column_i
 }
 
 bool TableHeap::GetTuple(Row *row, Transaction *txn) {
+  if (IsEmpty()) return false;
+
   auto page_id = row->GetRowId().GetPageId();
   auto page = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(page_id));
 

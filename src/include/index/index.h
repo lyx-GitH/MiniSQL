@@ -26,6 +26,8 @@ class Index {
 
   virtual dberr_t Destroy() = 0;
 
+
+
  protected:
   index_id_t index_id_;
   IndexSchema *key_schema_;

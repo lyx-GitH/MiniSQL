@@ -51,7 +51,6 @@ CatalogMeta *CatalogMeta::DeserializeFrom(char *buf, MemHeap *heap) {
   // ASSERT(false, "Not Implemented yet");
   ASSERT(buf != nullptr, "*CatalogMeta::DeserializeFrom : Null buf");
 
-
   uint32_t ser_cnt = 0;
   uint32_t i;
   uint32_t magic_number, table_meta_pages_num, index_meta_pages_num;
@@ -100,7 +99,7 @@ CatalogMeta *CatalogMeta::DeserializeFrom(char *buf, MemHeap *heap) {
 
   ASSERT(catalog_meta != nullptr, "Invalid Assignment");
 
-  return reinterpret_cast<CatalogMeta*>(mem);
+  return reinterpret_cast<CatalogMeta *>(mem);
 }
 
 uint32_t CatalogMeta::GetSerializedSize() const {
@@ -122,16 +121,13 @@ CatalogManager::CatalogManager(BufferPoolManager *buffer_pool_manager, LockManag
   if (init == 1) {
     // initialize metadata
     catalog_meta_ = CatalogMeta::NewInstance(heap_);
-    auto meta = buffer_pool_manager->FetchPage(0);
-    catalog_meta_->SerializeTo(meta->GetData());
-    buffer_pool_manager->UnpinPage(0, true);
-    buffer_pool_manager->FlushPage(0);
+    FlushCatalogMetaPage();
   }
 
   else  // load tableinfo and indexinfo
   {
     // Deserialize catalog meta
-    Page* meta_page = buffer_pool_manager->FetchPage(0);
+    Page *meta_page = buffer_pool_manager->FetchPage(0);
     char *buf = meta_page->GetData();
     CatalogMeta *Catalog_meta_ = CatalogMeta::DeserializeFrom(buf, heap_);
     ASSERT(Catalog_meta_ != nullptr, "invalid meta");
@@ -153,11 +149,11 @@ CatalogManager::CatalogManager(BufferPoolManager *buffer_pool_manager, LockManag
 }
 
 CatalogManager::~CatalogManager() {
-//  ASSERT(catalog_meta_ != nullptr, "Null Meta");
-//  FlushCatalogMetaPage();
+  //  ASSERT(catalog_meta_ != nullptr, "Null Meta");
+  //  FlushCatalogMetaPage();
 
-//  delete heap_;
-    delete heap_;
+  //  delete heap_;
+  delete heap_;
 }
 
 dberr_t CatalogManager::CreateTable(const string &table_name, TableSchema *schema, Transaction *txn,
@@ -306,7 +302,9 @@ dberr_t CatalogManager::CreateIndex(const std::string &table_name, const string 
   index_id_t index_id = next_index_id_.fetch_add(1);
 
   // add it to the index names map
-  tables_indexes_it->second[index_name] = index_id;
+//  tables_indexes_it->second[index_name] = index_id;
+  index_names_[table_name].insert(std::make_pair(index_name, index_id));
+
 
   // get key map
   std::vector<uint32_t> key_map;
@@ -406,6 +404,33 @@ dberr_t CatalogManager::GetTableIndexes(const std::string &table_name, std::vect
   return DB_FAILED;
 }
 
+void CatalogManager::RemoveIndexesOnTable(const std::string &table_name) {
+    ASSERT(table_names_.count(table_name), "Invalid table");
+    if(index_names_.count(table_name) == 0)
+      return;
+    auto& all_index = index_names_[table_name];
+    IndexRootsPage* index_root_page = reinterpret_cast<IndexRootsPage*>(buffer_pool_manager_->FetchPage(1)->GetData());
+
+
+    for(auto it : all_index) {
+      auto index_id = it.second;
+      ASSERT(indexes_.count(index_id), "Invalid index id");
+      auto index_info = indexes_[index_id];
+      index_info->GetIndex()->Destroy();
+      bool r = index_root_page->Delete(index_id);
+      ASSERT(r, "unsafe del");
+      //delete indexes_[index_id];
+      indexes_.erase(index_id);
+      ASSERT(catalog_meta_->index_meta_pages_.count(index_id), "invalid index id");
+      auto index_meta_page = catalog_meta_->index_meta_pages_[index_id];
+      buffer_pool_manager_->DeletePage(index_meta_page);
+      catalog_meta_->index_meta_pages_.erase(index_id);
+    }
+
+    all_index.erase(table_name);
+    buffer_pool_manager_->UnpinPage(1, true);
+}
+
 dberr_t CatalogManager::DropTable(const string &table_name) {
   // check whether table exists
   auto table_it = table_names_.find(table_name);
@@ -415,7 +440,15 @@ dberr_t CatalogManager::DropTable(const string &table_name) {
 
   else  // drop table
   {
+
     table_id_t table_id = table_it->second;
+
+    RemoveIndexesOnTable(table_name);
+    //std::string table_name = tables_[table_id]->GetTableName();
+
+
+
+    tables_[table_id]->GetTableHeap()->FreeHeap();
 
     // delete in the table names map
     table_names_.erase(table_name);
@@ -431,8 +464,13 @@ dberr_t CatalogManager::DropTable(const string &table_name) {
     // get page id
     page_id_t page_id = catalog_meta_->table_meta_pages_[table_id];
 
+
+
     // delete
-    buffer_pool_manager_->DeletePage(page_id);
+    bool r = buffer_pool_manager_->DeletePage(page_id);
+
+    ASSERT(r, "invalid drop");
+    catalog_meta_->table_meta_pages_.erase(table_id);
 
     // update CatalogMetaPage
     SerializeToCatalogMetaPage();
@@ -443,7 +481,8 @@ dberr_t CatalogManager::DropTable(const string &table_name) {
   return DB_FAILED;
 }
 
-dberr_t CatalogManager::DropIndex(const string &table_name, const string &index_name) {
+dberr_t CatalogManager::DropIndex(const string &table_name, const string &index_name, bool update_meta) {
+  std::cout << "DROP INDEX: "<<table_name<<" :"<<index_name<<std::endl;
   // whether the table exists
   auto tables_indexes_it = index_names_.find(table_name);
 
@@ -455,12 +494,19 @@ dberr_t CatalogManager::DropIndex(const string &table_name, const string &index_
   auto index_it = tables_indexes_it->second.find(index_name);
   if (index_it == (tables_indexes_it->second.end())) {
     return DB_INDEX_NOT_FOUND;
-  }
-
-  else  // drop index
+  } else  // drop index
   {
     tables_indexes_it->second.erase(index_it);
     indexes_.erase(index_it->second);
+
+    auto index_id = index_names_[table_name][index_name];
+    indexes_[index_id]->GetIndex()->Destroy();
+
+    auto index_root_page =
+        reinterpret_cast<IndexRootsPage *>(buffer_pool_manager_->FetchPage(INDEX_ROOTS_PAGE_ID)->GetData());
+    ASSERT(index_root_page != nullptr, "Invalid root page");
+    bool r = index_root_page->Delete(index_id);
+    ASSERT(r, "remove index failed");
 
     // delete the page
 
@@ -468,15 +514,16 @@ dberr_t CatalogManager::DropIndex(const string &table_name, const string &index_
     page_id_t page_id = catalog_meta_->index_meta_pages_[index_it->second];
 
     // delete
-    buffer_pool_manager_->DeletePage(page_id);
+    r = buffer_pool_manager_->DeletePage(page_id);
+    ASSERT(r, "Invalid Index Drop");
+    catalog_meta_->index_meta_pages_.erase(index_it->second);
 
     // update CatalogMetaPage
-    SerializeToCatalogMetaPage();
+    if(update_meta)
+      SerializeToCatalogMetaPage();
 
     return DB_SUCCESS;
   }
-
-  return DB_FAILED;
 }
 
 dberr_t CatalogManager::SerializeToCatalogMetaPage() const {
@@ -486,11 +533,8 @@ dberr_t CatalogManager::SerializeToCatalogMetaPage() const {
   Page *catalog_meta_page = buffer_pool_manager_->FetchPage(CATALOG_META_PAGE_ID);
 
   // Serialize catalog meta
-  char *buf = reinterpret_cast<char *>(heap_->Allocate(PAGE_SIZE));
+  char *buf = catalog_meta_page->GetData();
   catalog_meta_->SerializeTo(buf);
-
-  // write data to the page
-  catalog_meta_page->SetData(buf);
 
   // unpin the page
   buffer_pool_manager_->UnpinPage(CATALOG_META_PAGE_ID, false);
@@ -499,18 +543,17 @@ dberr_t CatalogManager::SerializeToCatalogMetaPage() const {
 }
 
 dberr_t CatalogManager::FlushCatalogMetaPage() const {
-//  bool b = buffer_pool_manager_->FlushPage(CATALOG_META_PAGE_ID);
-//  ASSERT(b, "CatalogMetaPage Pinned");
-//
-//  return DB_SUCCESS;
-    auto meta_page = buffer_pool_manager_->FetchPage(0);
-    char* buffer = meta_page->GetData();
-    catalog_meta_->SerializeTo(buffer);
-    buffer_pool_manager_->UnpinPage(0, true);
-    buffer_pool_manager_->FlushPage(0);
+  //  bool b = buffer_pool_manager_->FlushPage(CATALOG_META_PAGE_ID);
+  //  ASSERT(b, "CatalogMetaPage Pinned");
+  //
+  //  return DB_SUCCESS;
+  auto meta_page = buffer_pool_manager_->FetchPage(0);
+  char *buffer = meta_page->GetData();
+  catalog_meta_->SerializeTo(buffer);
+  buffer_pool_manager_->FlushPage(0);
+  buffer_pool_manager_->UnpinPage(0, false);
 
-    return DB_SUCCESS;
-
+  return DB_SUCCESS;
 }
 
 dberr_t CatalogManager::LoadTable(const table_id_t table_id, const page_id_t page_id) {
@@ -544,7 +587,6 @@ dberr_t CatalogManager::LoadTable(const table_id_t table_id, const page_id_t pag
 }
 
 dberr_t CatalogManager::LoadIndex(const index_id_t index_id, const page_id_t page_id) {
-
   // create index_info
   auto *index_info = IndexInfo::Create(heap_);
   IndexMetadata *index_meta = nullptr;
@@ -579,7 +621,7 @@ dberr_t CatalogManager::LoadIndex(const index_id_t index_id, const page_id_t pag
 
     // add to index map
     indexes_[index_id] = index_info;
-    std::cout <<"index "<<index_meta->GetIndexName()<<" loaded"<<std::endl;
+    std::cout << "index " << index_meta->GetIndexName() << " loaded" << std::endl;
 
     return DB_SUCCESS;
   }
@@ -600,4 +642,21 @@ dberr_t CatalogManager::GetTable(const table_id_t table_id, TableInfo *&table_in
   }
 
   return DB_FAILED;
+}
+
+void CatalogManager::FlushTables() {
+  for (auto &table : tables_) {
+    ASSERT(catalog_meta_->table_meta_pages_.count(table.first), "Invalid Table Meta Page Id");
+    table.second->GetTableHeap()->SaveTable();
+    auto meta_page_id = catalog_meta_->table_meta_pages_[table.first];
+    table.second->FlushMetaPage(buffer_pool_manager_, meta_page_id);
+  }
+}
+
+void CatalogManager::FlushIndexes() {
+  for (auto &index : indexes_) {
+    ASSERT(catalog_meta_->index_meta_pages_.count(index.first), "Invalid Index Meta Page Id");
+    auto meta_page_id = catalog_meta_->index_meta_pages_[index.first];
+    index.second->FlushMetaPage(buffer_pool_manager_, meta_page_id);
+  }
 }

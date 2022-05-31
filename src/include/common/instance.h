@@ -41,8 +41,9 @@ public:
 
   }
 
+
   ~DBStorageEngine() {
-    catalog_mgr_->write_back();
+    catalog_mgr_->WriteBack();
     delete catalog_mgr_;
     delete bpm_;
     delete disk_mgr_;

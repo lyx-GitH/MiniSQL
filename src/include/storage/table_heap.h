@@ -18,7 +18,7 @@
 #define ERASE(C, P)                                                              \
   do {                                                                           \
     ASSERT(C[P->GetRemain()].count(P->GetTablePageId()) != 0, "Invalid Delete"); \
-    erase_page(P);                                \
+    erase_page(P);                                                               \
   } while (0)
 #define HAS(C, P) C[P->GetRemain()].count(P->GetTablePageId()) != 0
 
@@ -97,7 +97,11 @@ class TableHeap {
    */
   void FreeHeap();
 
-
+  void SaveTable() {
+    for(auto pages : Pages)
+      for(auto page_id : pages.second)
+        buffer_pool_manager_->FlushPage(page_id);
+  }
 
   /**
    * @return the begin iterator of this table
@@ -114,6 +118,8 @@ class TableHeap {
    */
   inline page_id_t GetFirstPageId() const { return first_page_id_; }
 
+  inline bool IsEmpty() { return first_page_id_ == INVALID_PAGE_ID; }
+
  private:
   /**
    * create table heap and initialize first page
@@ -121,15 +127,17 @@ class TableHeap {
   explicit TableHeap(BufferPoolManager *buffer_pool_manager, Schema *schema, Transaction *txn, LogManager *log_manager,
                      LockManager *lock_manager)
       : buffer_pool_manager_(buffer_pool_manager),
+        first_page_id_(INVALID_PAGE_ID),
         schema_(schema),
+        Pages(),
         log_manager_(log_manager),
-        lock_manager_(lock_manager) {
-    auto FirstPage = reinterpret_cast<TablePage *>(buffer_pool_manager->NewPage(first_page_id_));
-    ASSERT(FirstPage != nullptr, "TableHeap : First Page Allocation failed");
-    FirstPage->Init(first_page_id_, INVALID_PAGE_ID, log_manager, txn);
-    FirstPage->SetNextPageId(INVALID_PAGE_ID);
-    INSERT(Pages, FirstPage);
-  };
+        lock_manager_(lock_manager){
+            //    auto FirstPage = reinterpret_cast<TablePage *>(buffer_pool_manager->NewPage(first_page_id_));
+            //    ASSERT(FirstPage != nullptr, "TableHeap : First Page Allocation failed");
+            //    FirstPage->Init(first_page_id_, INVALID_PAGE_ID, log_manager, txn);
+            //    FirstPage->SetNextPageId(INVALID_PAGE_ID);
+            //    INSERT(Pages, FirstPage);
+        };
 
   /**
    * load existing table heap by first_page_id
@@ -146,7 +154,7 @@ class TableHeap {
     auto cur_page_id = first_page_id_;
     TablePage *cur_page = nullptr;
     while (cur_page_id != INVALID_PAGE_ID) {
-      cur_page = static_cast<TablePage *>(buffer_pool_manager_->FetchPage(cur_page_id));
+      cur_page = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(cur_page_id));
       ASSERT(cur_page != nullptr, "NULL page encountered");
       INSERT(Pages, cur_page);
       cur_page_id = cur_page->GetNextPageId();
@@ -163,7 +171,7 @@ class TableHeap {
   void erase_page(TablePage *page) {
     auto rem = page->GetRemain();
     Pages[rem].erase(page->GetTablePageId());
-    if (Pages[rem].size() == 0) Pages.erase(rem);
+    if (Pages[rem].empty()) Pages.erase(rem);
   }
 
   [[maybe_unused]] LogManager *log_manager_;

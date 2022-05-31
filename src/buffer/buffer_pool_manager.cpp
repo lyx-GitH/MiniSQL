@@ -111,7 +111,7 @@ bool BufferPoolManager::DeletePage(page_id_t page_id) {
 
 bool BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty) {
   if (page_table_.count(page_id) == 0) {
-//    LOG(INFO) << "no such page id " << page_id;
+    LOG(INFO) << "no such page id " << page_id;
     return false;
   }
   auto frame_id = page_table_[page_id];

@@ -73,6 +73,7 @@ BPLUSTREE_INDEX_TYPE::GetBeginIterator(const KeyType &key) { return container_.B
 INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE BPLUSTREE_INDEX_TYPE::GetEndIterator() { return container_.End(); }
 
+
 template class BPlusTreeIndex<GenericKey<4>, RowId, GenericComparator<4>>;
 
 template class BPlusTreeIndex<GenericKey<8>, RowId, GenericComparator<8>>;

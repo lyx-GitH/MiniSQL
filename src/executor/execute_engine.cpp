@@ -211,7 +211,7 @@ dberr_t ExecuteEngine::ExecuteDropTable(pSyntaxNode ast, ExecuteContext *context
     return DB_FAILED;
   }
   auto target_db = dbs_.find(current_db_)->second;
-  if (target_db->catalog_mgr_->DropTable(std::string{ast->child_->val_}) == DB_FAILED) return DB_TABLE_NOT_EXIST;
+  if (target_db->catalog_mgr_->DropTable(std::string{ast->child_->val_}) != DB_SUCCESS) return DB_TABLE_NOT_EXIST;
   database_structure[current_db_].erase(std::string{ast->child_->val_});
   return DB_SUCCESS;
 }
@@ -379,7 +379,7 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
   cur = cur->next_->child_;
 
   TableInfo *tb_info = nullptr;
-  if (target_db->catalog_mgr_->GetTable(table_name, tb_info) == DB_FAILED) {
+  if (target_db->catalog_mgr_->GetTable(table_name, tb_info) != DB_SUCCESS) {
     ENABLE_ERROR << "table " << target_db << " not exist" << DISABLED;
     return DB_TABLE_NOT_EXIST;
   }
@@ -408,6 +408,7 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
 
   update_index(table_name, data_row.GetRowId(), data_tuple, column_index);
 
+  tb_info->UpdateTableMeta();
   return DB_SUCCESS;
 }
 
@@ -453,6 +454,8 @@ dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
       update_index(table_name, data.GetRowId(), data.GetFields(), column_index, false);
     }
   }
+
+  table_info->UpdateTableMeta();
 
   return DB_SUCCESS;
 }
@@ -506,8 +509,8 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
   }
   // now we have all the effected rows.
   do_update(table_info, updated, ans_set, column_index);
-
-  return DB_FAILED;
+  table_info->UpdateTableMeta();
+  return DB_SUCCESS;
 }
 
 dberr_t ExecuteEngine::ExecuteTrxBegin(pSyntaxNode ast, ExecuteContext *context) {
@@ -751,6 +754,7 @@ bool ExecuteEngine::parse_column_definitions(const string &table_name, pSyntaxNo
       database_structure[current_db_][table_name][col->GetName()] = {col->GetName()};
     }
   }
+  table_info->UpdateTableMeta();
   return true;
 
 ERROR:

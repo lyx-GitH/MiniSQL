@@ -81,6 +81,14 @@ class IndexInfo {
 
   inline TableInfo *GetTableInfo() const { return table_info_; }
 
+  void FlushMetaPage(BufferPoolManager* buffer_pool_manager, const page_id_t& meta_page_id) {
+    auto page = buffer_pool_manager->FetchPage(meta_page_id);
+    ASSERT(page != nullptr, "Invalid MetaPage Fetch");
+    meta_data_->SerializeTo(page->GetData());
+    buffer_pool_manager->FlushPage(meta_page_id);
+    buffer_pool_manager->UnpinPage(meta_page_id, false);
+  }
+
  private:
   explicit IndexInfo()
       : meta_data_{nullptr}, index_{nullptr}, table_info_{nullptr}, key_schema_{nullptr}, heap_(new SimpleMemHeap()) {}
@@ -89,8 +97,7 @@ class IndexInfo {
     using INDEX_KEY_TYPE = GenericKey<32>;
     using INDEX_COMPARATOR_TYPE = GenericComparator<32>;
     using BP_TREE_INDEX = BPlusTreeIndex<INDEX_KEY_TYPE, RowId, INDEX_COMPARATOR_TYPE>;
-    auto index = new (heap_->Allocate(sizeof(BP_TREE_INDEX)))
-        BP_TREE_INDEX(meta_data_->GetIndexId(), key_schema_, buffer_pool_manager);
+    auto index = new (heap_->Allocate(sizeof(BP_TREE_INDEX)))BP_TREE_INDEX(meta_data_->GetIndexId(), key_schema_, buffer_pool_manager);
     // ASSERT(false, "Not Implemented yet.");
     return index;
   }

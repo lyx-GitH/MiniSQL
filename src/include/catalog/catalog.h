@@ -41,6 +41,8 @@ class CatalogMeta {
     return new (buf) CatalogMeta();
   }
 
+
+
   /**
    * Used only for testing
    */
@@ -86,16 +88,14 @@ class CatalogManager {
 
   dberr_t DropTable(const std::string &table_name);
 
-  dberr_t DropIndex(const std::string &table_name, const std::string &index_name);
+  void RemoveIndexesOnTable(const std::string& table_name);
 
-  void write_back() {
-    ASSERT(catalog_meta_ != nullptr, "Null Meta");
-    auto meta = buffer_pool_manager_->FetchPage(0);
-    ASSERT(meta, "null meta");
-    char *buf = meta->GetData();
-    catalog_meta_->SerializeTo(buf);
-    buffer_pool_manager_->UnpinPage(0, true);
-    buffer_pool_manager_->FlushPage(0);
+  dberr_t DropIndex(const std::string &table_name, const std::string &index_name, bool update_meta = true);
+
+  void WriteBack() {
+    FlushTables();
+    FlushIndexes();
+    FlushCatalogMetaPage();
   }
 
   CatalogMeta *get_meta() { return this->catalog_meta_; }
@@ -110,6 +110,10 @@ class CatalogManager {
   dberr_t LoadIndex(const index_id_t index_id, const page_id_t page_id);
 
   dberr_t GetTable(const table_id_t table_id, TableInfo *&table_info);
+
+  void FlushTables();
+
+  void FlushIndexes();
 
  private:
   [[maybe_unused]] BufferPoolManager *buffer_pool_manager_;

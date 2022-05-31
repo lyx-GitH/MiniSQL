@@ -166,6 +166,7 @@ void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
   RootPage->SetPageType(IndexPageType::LEAF_PAGE);
 
   RootPage->Insert(key, value, comparator_);
+
   UpdateRootPageId(true);
   buffer_pool_manager_->UnpinPage(RootPage->GetPageId(), true);
 }
@@ -602,10 +603,9 @@ void BPLUSTREE_TYPE::UpdateRootPageId(int insert_record) {
   auto index_root_page= TO_TYPE(IndexRootsPage*, buffer_pool_manager_->FetchPage(INDEX_ROOTS_PAGE_ID)->GetData());
   ASSERT(index_root_page != nullptr, "invalid root fetch");
   bool res;
-  if(insert_record)
+  res = index_root_page->Update(index_id_, root_page_id_);
+  if(!res)
     res = index_root_page->Insert(index_id_, root_page_id_);
-  else
-    res = index_root_page->Update(index_id_, root_page_id_);
 
   ASSERT(res, "Wrong Root Update");
   buffer_pool_manager_->UnpinPage(INDEX_ROOTS_PAGE_ID, true);

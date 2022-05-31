@@ -69,6 +69,7 @@ class BPlusTree {
   // destroy the b plus tree
   void Destroy();
 
+
   void Destroy(BPlusTreePage *node);
 
   void OutputTree() {
