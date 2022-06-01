@@ -44,7 +44,8 @@ uint32_t TableMetadata::GetSerializedSize() const {
 uint32_t TableMetadata::DeserializeFrom(char *buf, TableMetadata *&table_meta, MemHeap *heap) {
   ASSERT(table_meta == nullptr, "TableMetadata::DeserializeFrom : Not Null TableMetadata");
 
-  uint32_t magic_number;
+  uint32_t magic_number=0;
+//  ++magic_number;
   uint32_t table_id;
   uint32_t table_name_len;
   std::string table_name;

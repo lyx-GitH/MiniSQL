@@ -213,9 +213,12 @@ class Field {
         case kTypeFloat:
           return std::to_string(value_.float_);
           break;
-        case kTypeChar:
-          return  std::string (value_.chars_);
-          break;
+        case kTypeChar: {
+          std::string s;
+          for(uint32_t i=0; i<len_; i++)
+            s+= value_.chars_[i];
+          return s;
+        }
       }
   }
 

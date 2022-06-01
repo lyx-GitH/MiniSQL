@@ -45,7 +45,7 @@ TEST(BPlusTreeTests, BPlusTreeIndexSimpleTest) {
   std::vector<uint32_t> index_key_map{0, 1};
   const TableSchema table_schema(columns);
   auto *index_schema = Schema::ShallowCopySchema(&table_schema, index_key_map, &heap);
-  auto *index = ALLOC(heap, BP_TREE_INDEX)(0, index_schema, engine.bpm_);
+  auto *index = ALLOC(heap, BP_TREE_INDEX)(0, -1, index_schema, engine.bpm_);
   for (int i = 0; i < size; i++) {
     std::vector<Field> fields{Field(TypeId::kTypeInt, i),
                               Field(TypeId::kTypeChar, const_cast<char *>("minisql"), 7, true)};

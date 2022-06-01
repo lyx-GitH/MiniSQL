@@ -1,10 +1,10 @@
 #ifndef MINISQL_EXECUTE_ENGINE_H
 #define MINISQL_EXECUTE_ENGINE_H
 
+#include <filesystem>
 #include <iomanip>
 #include <string>
 #include <unordered_map>
-#include <filesystem>
 #include "common/dberr.h"
 #include "common/instance.h"
 #include "common/macros.h"
@@ -134,8 +134,9 @@ class ExecuteEngine {
   void pretty_print(TableInfo *table_info, std::vector<std::string> &used_columns,
                     std::unordered_map<std::string, std::size_t> &column_index, std::unordered_set<RowId> &ans_set);
 
-  void do_update(const TableInfo* table_info, map<string, Field> new_values, unordered_set<RowId> effected_rows,
+  void do_update(const TableInfo *table_info, map<string, Field> new_values, unordered_set<RowId> effected_rows,
                  unordered_map<string, size_t> column_index);
+  void batch_index_insert(IndexInfo *index_info, TableInfo *table_info, std::unordered_set<RowId> &ans_set);
 };
 
 #endif  // MINISQL_EXECUTE_ENGINE_H

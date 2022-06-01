@@ -13,7 +13,8 @@ BufferPoolManager::BufferPoolManager(size_t pool_size, DiskManager *disk_manager
 
 BufferPoolManager::~BufferPoolManager() {
   for (auto page : page_table_) {
-    FlushPage(page.first);
+    if(pages_[page.second].is_dirty_)
+      FlushPage(page.first);
   }
   delete[] pages_;
   delete replacer_;
@@ -21,7 +22,13 @@ BufferPoolManager::~BufferPoolManager() {
 
 Page *BufferPoolManager::FetchPage(page_id_t page_id) {
   if (page_id == INVALID_PAGE_ID) return nullptr;
-  ASSERT(disk_manager_->IsPageFree(page_id)== false, "Fetching Free Pages");
+
+  if(disk_manager_->IsPageFree(page_id))
+  {
+    LOG(INFO)<<"!! Fetching Empty Page: "<<page_id;
+  }
+
+  //ASSERT(disk_manager_->IsPageFree(page_id) == false, "Fetching Free Pages");
   // this page is already inside the page table.
   if (page_table_.count(page_id)) {
     auto frame_of_page = page_table_[page_id];
@@ -91,6 +98,7 @@ Page *BufferPoolManager::NewPage(page_id_t &page_id) {
   pages_[frame_id].pin_count_ = 1;
 
   page_id = new_page_id;
+  ASSERT(disk_manager_->IsPageFree(page_id) == false, "Not Assigned!");
   return (pages_ + frame_id);
 }
 
@@ -111,12 +119,14 @@ bool BufferPoolManager::DeletePage(page_id_t page_id) {
   pages_[frame_of_page].ResetMemory();
   pages_[frame_of_page].is_dirty_ = false;
   pages_[frame_of_page].page_id_ = INVALID_PAGE_ID;
+//  LOG(INFO) <<"delete page "<< page_id;
+  ASSERT(disk_manager_->IsPageFree(page_id) == true, "Not FREE!!");
   return true;
 }
 
 bool BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty) {
   if (page_table_.count(page_id) == 0) {
-    LOG(INFO) << "no such page id " << page_id;
+    //LOG(INFO) << "no such page id " << page_id;
     return false;
   }
   auto frame_id = page_table_[page_id];
@@ -140,10 +150,16 @@ bool BufferPoolManager::FlushPage(page_id_t page_id) {
 
 page_id_t BufferPoolManager::AllocatePage() {
   int next_page_id = disk_manager_->AllocatePage();
+  //LOG(INFO) << "allocate page "<<next_page_id;
+  ASSERT(!disk_manager_->IsPageFree(next_page_id) , "Not Assigned");
   return next_page_id;
 }
 
-void BufferPoolManager::DeallocatePage(page_id_t page_id) { disk_manager_->DeAllocatePage(page_id); }
+void BufferPoolManager::DeallocatePage(page_id_t page_id) {
+  //LOG(INFO) <<"deallocate page: "<<page_id;
+  disk_manager_->DeAllocatePage(page_id);
+  ASSERT(disk_manager_->IsPageFree(page_id), "Not Free");
+}
 
 bool BufferPoolManager::IsPageFree(page_id_t page_id) { return disk_manager_->IsPageFree(page_id); }
 

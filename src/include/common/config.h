@@ -1,6 +1,7 @@
 #ifndef MINISQL_CONFIG_H
 #define MINISQL_CONFIG_H
 
+#include <iostream>
 #include <cstdint>
 #include <cstring>
 #include <functional>

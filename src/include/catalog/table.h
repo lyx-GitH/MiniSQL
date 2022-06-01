@@ -47,6 +47,8 @@ class TableMetadata {
  */
 class TableInfo {
  public:
+  friend class CatalogManager;
+
   static TableInfo *Create(MemHeap *heap) {
     void *buf = heap->Allocate(sizeof(TableInfo));
     return new (buf) TableInfo();

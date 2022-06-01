@@ -15,7 +15,7 @@ class DBStorageEngine {
   explicit DBStorageEngine(std::string db_name, bool init = true, uint32_t buffer_pool_size = DEFAULT_BUFFER_POOL_SIZE)
       : db_file_name_(std::move(db_name)), init_(init) {
     // Init database file if needed
-        if (init_) {
+        if (init_ && std::filesystem::exists(db_file_name_)) {
           std::filesystem::remove(db_file_name_);
         }
         // Initialize components
@@ -43,7 +43,7 @@ class DBStorageEngine {
   }
 
   ~DBStorageEngine() {
-    catalog_mgr_->WriteBack();
+//    catalog_mgr_->WriteBack();
     delete catalog_mgr_;
     delete bpm_;
     delete disk_mgr_;

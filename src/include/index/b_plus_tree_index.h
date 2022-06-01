@@ -12,6 +12,8 @@ class BPlusTreeIndex : public Index {
 public:
   BPlusTreeIndex(index_id_t index_id, page_id_t root_id, IndexSchema *key_schema, BufferPoolManager *buffer_pool_manager);
 
+
+
   dberr_t InsertEntry(const Row &key, RowId row_id, Transaction *txn) override;
 
   dberr_t RemoveEntry(const Row &key, RowId row_id, Transaction *txn) override;

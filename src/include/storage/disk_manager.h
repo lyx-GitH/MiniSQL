@@ -100,7 +100,7 @@ private:
 
   page_id_t GetLocalId(page_id_t logical_page_id);
 
-  page_id_t GetMetaIdP(page_id_t logical_page_id);
+  page_id_t GetBitMapPhysicalId(page_id_t logical_page_id);
 
 private:
   // stream to write db file

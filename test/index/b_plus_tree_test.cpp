@@ -22,7 +22,7 @@ TEST(BPlusTreeTests, SampleTest) {
   // Init engine
   DBStorageEngine engine(db_name);
   BasicComparator<int> comparator;
-  BPlusTree<int, int, BasicComparator<int>> tree(0, engine.bpm_, comparator, 17, 17);
+  BPlusTree<int, int, BasicComparator<int>> tree(0, -1, engine.bpm_, comparator, 17, 17);
   TreeFileManagers mbr("tree_");
   // Prepare data
   const int n = 600;

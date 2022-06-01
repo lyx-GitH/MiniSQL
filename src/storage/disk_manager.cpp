@@ -12,20 +12,23 @@
  * p_lead_id -> physical id of the bit map page of that logical page
  */
 
-page_id_t DiskManager::GetBlockId(page_id_t logical_page_id) { return logical_page_id / BITMAP_SIZE; }
+static constexpr std::size_t max_extent_size = DiskManager::BITMAP_SIZE;
 
-page_id_t DiskManager::GetLocalId(page_id_t logical_page_id) { return logical_page_id % BITMAP_SIZE; }
+page_id_t DiskManager::GetBlockId(page_id_t logical_page_id) { return logical_page_id / max_extent_size; }
+
+page_id_t DiskManager::GetLocalId(page_id_t logical_page_id) { return logical_page_id % max_extent_size; }
 
 page_id_t DiskManager::MapPageId(page_id_t logical_page_id) {
-  auto n_block = GetLocalId(logical_page_id);
-  auto n_local = GetBlockId(logical_page_id);
-  return n_block * (1 + BITMAP_SIZE) + 1 + n_local + 1;
+  auto extend_id = logical_page_id / max_extent_size;
+  auto local_id = logical_page_id % max_extent_size;
+  page_id_t physical_id = 1 + extend_id * (1 + max_extent_size) + local_id + 1;
+  return physical_id;
 }
 
-page_id_t DiskManager::GetMetaIdP(page_id_t logical_page_id) {
-  auto n_block = GetBlockId(logical_page_id);
-  auto logical_leading_id = n_block * BITMAP_SIZE;
-  return MapPageId(logical_leading_id) - 1;
+page_id_t DiskManager::GetBitMapPhysicalId(page_id_t logical_page_id) {
+  auto physic_id = MapPageId(logical_page_id);
+  auto block_id = logical_page_id % max_extent_size;
+  return physic_id - block_id - 1;
 }
 
 DiskManager::DiskManager(const std::string &db_file) : file_name_(db_file) {
@@ -65,84 +68,58 @@ void DiskManager::WritePage(page_id_t logical_page_id, const char *page_data) {
 }
 
 page_id_t DiskManager::AllocatePage() {
-  auto *dMeta = reinterpret_cast<DiskFileMetaPage *>(meta_data_);
-
-  if (dMeta->num_allocated_pages_ > MAX_VALID_PAGE_ID) return INVALID_PAGE_ID;
-
-  uint32_t i;
-
-  char buf[PAGE_SIZE];
-  memset(buf, 0, PAGE_SIZE);
-
-  for (i = 0; i < dMeta->num_extents_ && dMeta->extent_used_page_[i] >= BITMAP_SIZE; i++)
-    ;
-
-  if (i >= dMeta->num_extents_) {
-    auto *bit_map = reinterpret_cast<BitmapPage<PAGE_SIZE> *>(buf);
-    bit_map->AllocatePage(i);
-
-    ASSERT(i == 0, "DiskManager::Allocate->NewPageAllocate ERROR");
-
-    auto meta_p_id = GetMetaIdP(dMeta->num_allocated_pages_);
-
-    dMeta->extent_used_page_[dMeta->num_extents_] = 1;
-    dMeta->num_allocated_pages_ += 1;
-    dMeta->num_extents_ += 1;
-    WritePhysicalPage(meta_p_id, reinterpret_cast<const char *>(bit_map));
-    WritePhysicalPage(META_PAGE_ID, reinterpret_cast<const char *>(dMeta));
-
-    return dMeta->num_allocated_pages_ - 1;
-  } else {
-    auto l_leading_id = i * BITMAP_SIZE;
-    auto p_meta_id = MapPageId(l_leading_id) - 1;
-
-    ReadPhysicalPage(p_meta_id, buf);
-    auto *bit_map = reinterpret_cast<BitmapPage<PAGE_SIZE> *>(buf);
-
-    uint32_t local_l_id = -1;
-    bit_map->AllocatePage(local_l_id);
-
-    ASSERT(local_l_id != (uint32_t)-1, "DiskManager::Allocate->InsertAllocate ERROR");
-    dMeta->num_allocated_pages_ += 1;
-    dMeta->extent_used_page_[i] += 1;
-
-    WritePhysicalPage(p_meta_id, buf);
-    WritePhysicalPage(META_PAGE_ID, reinterpret_cast<const char *>(dMeta));
-
-    return i * BITMAP_SIZE + local_l_id;
+  auto disk_meta_page = reinterpret_cast<DiskFileMetaPage *>(meta_data_);
+  std::size_t i = 0;
+  for (i = 0; i < disk_meta_page->GetExtentNums(); i++)
+    if (disk_meta_page->GetExtentUsedPage(i) < max_extent_size) break;
+  if (i >= disk_meta_page->GetExtentNums()) {
+    disk_meta_page->extent_used_page_[i] = 0;
+    disk_meta_page->num_extents_ += 1;
   }
+  disk_meta_page->num_allocated_pages_ += 1;
+  disk_meta_page->extent_used_page_[i] += 1;
+  page_id_t bm_logical_id = i * (1 + max_extent_size) + 1;
+  char buf[PAGE_SIZE] = {0};
+  ReadPhysicalPage(bm_logical_id, buf);
+  auto bit_map_page = reinterpret_cast<BitmapPage<PAGE_SIZE> *>(buf);
+  uint32_t new_local_id;
+
+  bit_map_page->AllocatePage(new_local_id);
+  page_id_t new_logical_id = max_extent_size * i + new_local_id;
+  ASSERT(bm_logical_id == GetBitMapPhysicalId(new_logical_id), "Error");
+  WritePhysicalPage(0, meta_data_);
+  WritePhysicalPage(bm_logical_id, buf);
+  return new_logical_id;
 }
 
 void DiskManager::DeAllocatePage(page_id_t logical_page_id) {
-  auto local_id = GetLocalId(logical_page_id);
-  auto block_id = GetBlockId(logical_page_id);
-  auto meta_p_id = GetMetaIdP(logical_page_id);
-  char buf[PAGE_SIZE];
-  memset(buf, 0, PAGE_SIZE);
-  ReadPhysicalPage(meta_p_id, buf);
+  if(IsPageFree(logical_page_id))
+    return;
+  //ASSERT(IsPageFree(logical_page_id) == false, "Free empty page");
+  auto bit_map_id = GetBitMapPhysicalId(logical_page_id);
+  auto local_id = logical_page_id % max_extent_size;
+  auto extent_id = logical_page_id / max_extent_size;
+  char buf[PAGE_SIZE] = {0};
+  ReadPhysicalPage(bit_map_id, buf);
+  reinterpret_cast<BitmapPage<PAGE_SIZE> *>(buf)->DeAllocatePage(local_id);
+  auto disk_meta = reinterpret_cast<DiskFileMetaPage *>(meta_data_);
 
-  auto *bit_map = reinterpret_cast<BitmapPage<PAGE_SIZE> *>(buf);
-  auto *dMeta = reinterpret_cast<DiskFileMetaPage *>(meta_data_);
+  //ASSERT(disk_meta->extent_used_page_[extent_id] > 0, "Dealloctae null extent");
+//  ASSERT(r, "Does not deallocate a page");
 
-  ASSERT(bit_map->DeAllocatePage(local_id), "Free NULL page id");
-
-  dMeta->num_allocated_pages_ -= 1;
-  dMeta->extent_used_page_[block_id] -= 1;
-
-  WritePhysicalPage(meta_p_id, buf);
-  WritePhysicalPage(META_PAGE_ID, reinterpret_cast<const char *>(dMeta));
+  disk_meta->extent_used_page_[extent_id] -= 1;
+  disk_meta->num_allocated_pages_ -= 1;
+  WritePhysicalPage(bit_map_id, buf);
+  WritePhysicalPage(0, meta_data_);
 }
 
 bool DiskManager::IsPageFree(page_id_t logical_page_id) {
-  auto local_id = GetLocalId(logical_page_id);
-  auto meta_p_id = GetMetaIdP(logical_page_id);
-  char buf[PAGE_SIZE];
-  memset(buf, 0, PAGE_SIZE);
-  ReadPhysicalPage(meta_p_id, buf);
-
-  auto *bit_map = reinterpret_cast<BitmapPage<PAGE_SIZE> *>(buf);
-
-  return bit_map->IsPageFree(local_id);
+  auto bit_map_id = GetBitMapPhysicalId(logical_page_id);
+  auto local_id = logical_page_id % max_extent_size;
+  char buf[PAGE_SIZE] = {0};
+  ReadPhysicalPage(bit_map_id, buf);
+  auto bit_map_page = reinterpret_cast<BitmapPage<PAGE_SIZE> *>(buf);
+  return bit_map_page->IsPageFree(local_id);
 }
 
 int DiskManager::GetFileSize(const std::string &file_name) {
@@ -170,11 +147,22 @@ void DiskManager::ReadPhysicalPage(page_id_t physical_page_id, char *page_data) 
       LOG(INFO) << "Read less than a page" << std::endl;
 #endif
       memset(page_data + read_count, 0, PAGE_SIZE - read_count);
+
+      if(physical_page_id == 2) {
+        uint32_t mn;
+        memcpy(&mn, page_data, 4);
+        LOG(INFO) <<"when reading meta page, magic num = "<<mn<<std::endl;
+      }
     }
   }
 }
 
 void DiskManager::WritePhysicalPage(page_id_t physical_page_id, const char *page_data) {
+  if(physical_page_id == 2) {
+    uint32_t mn;
+    memcpy(&mn, page_data, 4);
+    std::cout <<"when writing meta page, magic num = "<<mn<<std::endl;
+  }
   size_t offset = static_cast<size_t>(physical_page_id) * PAGE_SIZE;
   // set write cursor to offset
   db_io_.seekp(offset);

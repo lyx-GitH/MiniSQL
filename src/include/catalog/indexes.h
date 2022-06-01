@@ -55,6 +55,8 @@ class IndexMetadata {
  */
 class IndexInfo {
  public:
+  friend class CatalogManager;
+
   static IndexInfo *Create(MemHeap *heap) {
     void *buf = heap->Allocate(sizeof(IndexInfo));
     return new (buf) IndexInfo();

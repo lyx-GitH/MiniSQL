@@ -41,8 +41,6 @@ class CatalogMeta {
     return new (buf) CatalogMeta();
   }
 
-
-
   /**
    * Used only for testing
    */
@@ -88,9 +86,13 @@ class CatalogManager {
 
   dberr_t DropTable(const std::string &table_name);
 
-  void RemoveIndexesOnTable(const std::string& table_name);
+  void RemoveIndexesOnTable(const std::string &table_name);
 
   dberr_t DropIndex(const std::string &table_name, const std::string &index_name, bool update_meta = true);
+
+  inline const std::unordered_map<std::string, std::size_t> &GetTableColumnIndexes(const std::string &table_name) {
+    return table_column_indexes[table_name];
+  }
 
   void WriteBack() {
     FlushTables();
@@ -125,6 +127,8 @@ class CatalogManager {
   // map for tables
   std::unordered_map<std::string, table_id_t> table_names_;
   std::unordered_map<table_id_t, TableInfo *> tables_;
+  std::unordered_map<std::string, std::unordered_map<std::string, std::size_t>> table_column_indexes;
+
   // map for indexes: table_name->index_name->indexes
   [[maybe_unused]] std::unordered_map<std::string, std::unordered_map<std::string, index_id_t>> index_names_;
   [[maybe_unused]] std::unordered_map<index_id_t, IndexInfo *> indexes_;

@@ -246,21 +246,21 @@ int B_PLUS_TREE_LEAF_PAGE_TYPE::BinarySearch(const KeyType &key, const KeyCompar
   return right + 1;
 }
 template <typename KeyType, typename ValueType, typename KeyComparator>
-void BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>::FetchValues(const KeyType &key, bool left,
-                                                                        bool key_included,
-                                                                        unordered_set<ValueType> &ans_set,
-                                                                        const KeyComparator &comparator) {
+void BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>::FetchValues(const KeyType &key, bool left, bool key_included,
+                                                                       unordered_set<ValueType> &ans_set,
+                                                                       const KeyComparator &comparator) {
   auto key_index = BinarySearch(key, comparator);
   // key index is the first value that v >= key
   if (left) {
-    if(key_included && key_index < GetSize() && comparator(key, array_[key_index].first) == 0)
+    if (key_included && key_index < GetSize() && comparator(key, array_[key_index].first) == 0)
       ans_set.insert(array_[key_index].second);
-    for(int i=0; i<key_index; i++)
-      ans_set.insert(array_[i].second);
+    for (int i = 0; i < key_index; i++) ans_set.insert(array_[i].second);
   } else {
     if (key_included && comparator(key, array_[key_index].first) == 0 && key_index < GetSize())
       ans_set.insert(array_[key_index].second);
-    for (int i = key_index; i < GetSize(); i++) ans_set.insert(array_[i].second);
+    if (key_index < GetSize() && !key_included && comparator(array_[key_index].first, key) > 0)
+      ans_set.insert(array_[key_index].second);
+    for (int i = key_index + 1; i < GetSize(); i++) ans_set.insert(array_[i].second);
   }
 }
 template <typename KeyType, typename ValueType, typename KeyComparator>

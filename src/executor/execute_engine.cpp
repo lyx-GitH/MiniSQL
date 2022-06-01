@@ -1,23 +1,12 @@
 #include "executor/execute_engine.h"
 #include "common/IntervalMerge.h"
 #include "common/comparison.h"
+#include "common/format_print.h"
 #include "glog/logging.h"
 
 static const std::string db_file_posfix{".db"};
 static const std::filesystem::path db_root_dir = std::filesystem::current_path() / "database";
 PseudoDataBases ExecuteEngine::database_structure;
-
-void output(const uint32_t len, const Field *text) {
-  auto indent = len - text->GetLength();
-  std::string blanks(indent, ' ');
-  std::cout << text << blanks;
-}
-
-void output(const uint32_t len, const std::string &str) {
-  auto indent = len - str.length();
-  std::string blanks(indent, ' ');
-  std::cout << str << blanks;
-}
 
 ExecuteEngine::ExecuteEngine() {
   std::cout << "MiniSQL init ..." << std::endl;
@@ -116,7 +105,7 @@ dberr_t ExecuteEngine::ExecuteDropDatabase(pSyntaxNode ast, ExecuteContext *cont
   db_name.append(db_file_posfix);
 
   if (dbs_.count(db_name) == 0) {
-    ENABLE_ERROR << "database  " << db_name<<" not exist" << DISABLED;
+    ENABLE_ERROR << "database  " << db_name << " not exist" << DISABLED;
     return DB_FAILED;
   }
 
@@ -271,6 +260,19 @@ dberr_t ExecuteEngine::ExecuteCreateIndex(pSyntaxNode ast, ExecuteContext *conte
   TableInfo *target_table = nullptr;
   if (target_db->catalog_mgr_->GetTable(table_name, target_table) == DB_FAILED) return DB_TABLE_NOT_EXIST;
 
+  const auto &column_indexes = dbs_[current_db_]->catalog_mgr_->GetTableColumnIndexes(table_name);
+  for (auto &col_name : column_names) {
+    if (!column_indexes.count(col_name)) {
+      ENABLE_ERROR << "column " << col_name << " not exist" << DISABLED;
+      return DB_COLUMN_NAME_NOT_EXIST;
+    }
+    auto col_idx = column_indexes.at(col_name);
+    if (!target_table->GetSchema()->GetColumn(col_idx)->IsUnique()) {
+      ENABLE_ERROR << "cannot build index on not-unique column "
+                   << target_table->GetSchema()->GetColumn(col_idx)->GetName() << DISABLED;
+    }
+  }
+
   ASSERT(target_table != nullptr, "Null Table Fetch");
   IndexInfo *target_index = nullptr;
   if (target_db->catalog_mgr_->CreateIndex(table_name, index_name, column_names, context->txn_, target_index) ==
@@ -282,6 +284,15 @@ dberr_t ExecuteEngine::ExecuteCreateIndex(pSyntaxNode ast, ExecuteContext *conte
   std::unordered_set<std::string> col_set;
   for (auto &col : column_names) col_set.insert(std::move(col));
   database_structure[current_db_][table_name].insert(std::make_pair(std::move(index_name), std::move(col_set)));
+
+  IndexInfo *index_info = nullptr;
+  target_db->catalog_mgr_->GetIndex(table_name, index_name, index_info);
+  ASSERT(index_info != nullptr, "Invalid Fetch");
+
+  std::unordered_set<RowId> ans_set;
+  target_table->GetTableHeap()->FetchAllIds(ans_set);
+
+  batch_index_insert(index_info, target_table, ans_set);
 
   return DB_SUCCESS;
 }
@@ -452,6 +463,7 @@ dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
       Row data(rid);
       if (table_heap->GetTuple(&data, nullptr) == false) ASSERT(false, "error when parsing conditions");
       update_index(table_name, data.GetRowId(), data.GetFields(), column_index, false);
+      table_heap->MarkDelete(rid, nullptr);
     }
   }
 
@@ -510,43 +522,6 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
   // now we have all the effected rows.
   do_update(table_info, updated, ans_set, column_index);
   table_info->UpdateTableMeta();
-  return DB_SUCCESS;
-}
-
-dberr_t ExecuteEngine::ExecuteTrxBegin(pSyntaxNode ast, ExecuteContext *context) {
-#ifdef ENABLE_EXECUTE_DEBUG
-  LOG(INFO) << "ExecuteTrxBegin" << std::endl;
-#endif
-  return DB_FAILED;
-}
-
-dberr_t ExecuteEngine::ExecuteTrxCommit(pSyntaxNode ast, ExecuteContext *context) {
-#ifdef ENABLE_EXECUTE_DEBUG
-  LOG(INFO) << "ExecuteTrxCommit" << std::endl;
-#endif
-  return DB_FAILED;
-}
-
-dberr_t ExecuteEngine::ExecuteTrxRollback(pSyntaxNode ast, ExecuteContext *context) {
-#ifdef ENABLE_EXECUTE_DEBUG
-  LOG(INFO) << "ExecuteTrxRollback" << std::endl;
-#endif
-  return DB_FAILED;
-}
-
-dberr_t ExecuteEngine::ExecuteExecfile(pSyntaxNode ast, ExecuteContext *context) {
-#ifdef ENABLE_EXECUTE_DEBUG
-  LOG(INFO) << "ExecuteExecfile" << std::endl;
-#endif
-  return DB_FAILED;
-}
-
-dberr_t ExecuteEngine::ExecuteQuit(pSyntaxNode ast, ExecuteContext *context) {
-#ifdef ENABLE_EXECUTE_DEBUG
-  LOG(INFO) << "ExecuteQuit" << std::endl;
-#endif
-  ASSERT(ast->type_ == kNodeQuit, "Unexpected node type.");
-  context->flag_quit_ = true;
   return DB_SUCCESS;
 }
 
@@ -622,7 +597,7 @@ bool ExecuteEngine::check_index_constrains(const std::string &table_name, const 
   std::vector<RowId> results;
   IndexInfo *index = nullptr;
   for (auto it = indexes.begin(); it != indexes.end(); ++it) {
-    if (db_engine->catalog_mgr_->GetIndex(table_name, it->first, index) != DB_FAILED) {
+    if (db_engine->catalog_mgr_->GetIndex(table_name, it->first, index) == DB_SUCCESS) {
       ASSERT(index != nullptr, "Invalid Fetch");
       key_fields.clear();
       for (auto &col_name : index->GetIndexKeySchema()->GetColumns()) {
@@ -644,7 +619,7 @@ void ExecuteEngine::update_index(const string &table_name, const RowId &rid, con
   std::vector<RowId> results;
   IndexInfo *index = nullptr;
   for (auto it = indexes.begin(); it != indexes.end(); ++it) {
-    if (db_engine->catalog_mgr_->GetIndex(table_name, it->first, index) != DB_FAILED) {
+    if (db_engine->catalog_mgr_->GetIndex(table_name, it->first, index) == DB_SUCCESS) {
       ASSERT(index != nullptr, "Invalid Fetch");
       key_fields.clear();
       for (auto &col_name : index->GetIndexKeySchema()->GetColumns()) {
@@ -679,6 +654,24 @@ void ExecuteEngine::update_index(const string &table_name, const RowId &rid, con
       else
         index->GetIndex()->RemoveEntry(Row(key_fields), rid, nullptr);
     }
+  }
+}
+
+void ExecuteEngine::batch_index_insert(IndexInfo *index_info, TableInfo *table_info,
+                                       std::unordered_set<RowId> &ans_set) {
+  const auto &column_index = dbs_[current_db_]->catalog_mgr_->GetTableColumnIndexes(table_info->GetTableName());
+  std::vector<Field> key_fields;
+  for (auto rid : ans_set) {
+    key_fields.clear();
+    Row row(rid);
+    table_info->GetTableHeap()->GetTuple(&row, nullptr);
+
+    for (auto &col_name : index_info->GetIndexKeySchema()->GetColumns()) {
+      std::string name{col_name->GetName()};
+      ASSERT(column_index.count(name), "invalid cilumn name");
+      key_fields.push_back(*row.GetFields()[column_index.at(name)]);
+    }
+    index_info->GetIndex()->InsertEntry(Row(key_fields), rid, nullptr);
   }
 }
 
@@ -727,22 +720,16 @@ bool ExecuteEngine::parse_column_definitions(const string &table_name, pSyntaxNo
     // generate primary key
     while (head) {
       pm_keys.emplace_back(head->val_);
+      key_set.insert(head->val_);
       head = head->next_;
     }
-//    bool unique = false;
+    //    bool unique = false;
     for (auto &key_name : pm_keys) {
       if (column_index.count(key_name) == 0) {
         dbs_[current_db_]->catalog_mgr_->DropTable(table_name);
         goto ERROR;
       }
-//      if (table_defs[column_index[key_name]]->IsUnique()) {
-//        unique = true;
-//      }
     }
-//    if (!unique) {
-//      dbs_[current_db_]->catalog_mgr_->DropTable(table_name);
-//      goto ERROR;
-//    }
 
     dbs_[current_db_]->catalog_mgr_->CreateIndex(table_name, "_primary_keys", pm_keys, nullptr, index_info);
     database_structure[current_db_][table_name].insert(std::make_pair("_primary_keys", std::move(key_set)));
@@ -815,12 +802,10 @@ bool ExecuteEngine::parse_compare(pSyntaxNode ast, const TableInfo *table_info, 
   ASSERT(comparisons.count(compare_token) != 0, "Invalid compare token");
   // std::string compare_key_str{ast->child_->next_->val_};
   uint32_t key_index;
-  if (table_info->GetSchema()->GetColumnIndex(key_column_name, key_index) == DB_FAILED) {
+  if (table_info->GetSchema()->GetColumnIndex(key_column_name, key_index) != DB_SUCCESS) {
     ENABLE_ERROR << "column " << key_column_name << "not exist" << DISABLED;
     return false;
   }
-  //  auto key_column = table_info->GetSchema()->GetColumn(key_index);
-  // pSyntaxNode key_node = ast->child_->next_;
 
   IndexInfo *index_info = find_index(table_info, key_column_name);
   Field key_field = get_field(ast->child_, table_info);
@@ -883,50 +868,18 @@ IndexInfo *ExecuteEngine::find_index(const TableInfo *table_info, const std::str
 void ExecuteEngine::pretty_print(TableInfo *table_info, std::vector<std::string> &used_columns,
                                  std::unordered_map<std::string, std::size_t> &column_index,
                                  std::unordered_set<RowId> &ans_set) {
-
-
+  std::vector<std::vector<std::string>> grid;
+  if (ans_set.empty()) return;
   for (auto &rid : ans_set) {
+    vector<string> r;
     Row row(rid);
     table_info->GetTableHeap()->GetTuple(&row, nullptr);
-    for(auto& f : row.GetFields())
-      std::cout <<f->toString()<<" ";
-    std::cout << std::endl;
-
+    for (auto &f : row.GetFields()) r.push_back(f->toString());
+    grid.push_back(std::move(r));
   }
-  std::cout << ans_set.size() <<" rows effected"<<std::endl;
-//  for(auto& vec : tuples) {
-//    for(auto t : vec){
-//      t->print();
-//    }
-//    std::cout << std::endl;
-//  }
-//  std::vector<uint32_t> max_length(used_columns.size() + 1);
-//  max_length[0] = std::to_string(n_row + 1).length();
-//  for (std::size_t i = 1; i < max_length.size(); i++) {
-//    auto col_index = column_index[used_columns[i - 1]];
-//    for (auto &tuple : tuples) {
-//      max_length[i] = max(max_length[i], tuple[col_index]->GetLength());
-//    }
-//    max_length[i]++;
-//  }
-//  std::string line = "+";
-//  for (auto len : max_length) {
-//    line.append(len, '-');
-//    line += '+';
-//  }
-//  std::cout << line << std::endl;
-//  for (std::size_t i = 0; i < tuples.size(); i++) {
-//    // print index
-//    std::cout << '|';
-//    output(max_length[0], to_string(i));
-//    std::cout << '|';
-//
-//    for (uint32_t j = 0; j < tuples[i].size(); j++) {
-//      output(max_length[j + 1], tuples[i][j]);
-//      std::cout << '|';
-//    }
-//    std::cout << std::endl << line << std::endl;
-//  }
+
+  format_print(grid);
+  std::cout << ans_set.size() << " rows effected" << std::endl;
 }
 void ExecuteEngine::do_update(const TableInfo *table_info, map<string, Field> new_values,
                               unordered_set<RowId> effected_rows, unordered_map<string, size_t> column_index) {
@@ -951,4 +904,41 @@ void ExecuteEngine::do_update(const TableInfo *table_info, map<string, Field> ne
 
     update_index(table_info->GetTableName(), cur_row.GetRowId(), cur_row.GetFields(), column_index, true);
   }
+}
+
+dberr_t ExecuteEngine::ExecuteTrxBegin(pSyntaxNode ast, ExecuteContext *context) {
+#ifdef ENABLE_EXECUTE_DEBUG
+  LOG(INFO) << "ExecuteTrxBegin" << std::endl;
+#endif
+  return DB_FAILED;
+}
+
+dberr_t ExecuteEngine::ExecuteTrxCommit(pSyntaxNode ast, ExecuteContext *context) {
+#ifdef ENABLE_EXECUTE_DEBUG
+  LOG(INFO) << "ExecuteTrxCommit" << std::endl;
+#endif
+  return DB_FAILED;
+}
+
+dberr_t ExecuteEngine::ExecuteTrxRollback(pSyntaxNode ast, ExecuteContext *context) {
+#ifdef ENABLE_EXECUTE_DEBUG
+  LOG(INFO) << "ExecuteTrxRollback" << std::endl;
+#endif
+  return DB_FAILED;
+}
+
+dberr_t ExecuteEngine::ExecuteExecfile(pSyntaxNode ast, ExecuteContext *context) {
+#ifdef ENABLE_EXECUTE_DEBUG
+  LOG(INFO) << "ExecuteExecfile" << std::endl;
+#endif
+  return DB_FAILED;
+}
+
+dberr_t ExecuteEngine::ExecuteQuit(pSyntaxNode ast, ExecuteContext *context) {
+#ifdef ENABLE_EXECUTE_DEBUG
+  LOG(INFO) << "ExecuteQuit" << std::endl;
+#endif
+  ASSERT(ast->type_ == kNodeQuit, "Unexpected node type.");
+  context->flag_quit_ = true;
+  return DB_SUCCESS;
 }

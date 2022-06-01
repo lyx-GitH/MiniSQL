@@ -610,6 +610,7 @@ void BPLUSTREE_TYPE::UpdateRootPageId(int insert_record) {
 //
 //  ASSERT(res, "Wrong Root Update");
 //  buffer_pool_manager_->UnpinPage(INDEX_ROOTS_PAGE_ID, true);
+    ASSERT(root_page_id_ == INVALID_PAGE_ID || buffer_pool_manager_->IsPageFree(root_page_id_) == false, "UnAssigned Root");
 }
 
 /**

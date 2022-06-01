@@ -47,7 +47,8 @@ uint32_t Schema::GetSerializedSize() const {
 uint32_t Schema::DeserializeFrom(char *buf, Schema *&schema, MemHeap *heap) {
   // replace with your code here
   ASSERT(schema == nullptr, "Schema::DeserializeFrom : Not Null Schema");
-  uint32_t magic_number;
+  uint32_t magic_number = 0;
+//  magic_number ++;
   uint32_t columns_length;
 
   uint32_t ser_cnt = 0;

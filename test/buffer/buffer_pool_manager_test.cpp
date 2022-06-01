@@ -5,6 +5,26 @@
 #include "buffer/buffer_pool_manager.h"
 #include "gtest/gtest.h"
 
+static std::string name = "_db.db";
+
+TEST(Buffer, Alloc) {
+//  remove(name.c_str());
+  DiskManager* dsk = new DiskManager(name);
+  BufferPoolManager* bpm = new BufferPoolManager(DEFAULT_BUFFER_POOL_SIZE, dsk);
+
+  const int size = 100;
+
+  for(int i=0; i< size; i++) {
+    page_id_t page_id = -1;
+    bpm->NewPage(page_id);
+  }
+
+  for(int i=0; i<size; i++) {
+    bpm->FetchPage(i);
+  }
+
+}
+
 TEST(BufferPoolManagerTest, BinaryDataTest) {
   const std::string db_name = "bpm_test1.db";
   const size_t buffer_pool_size = 10;

@@ -53,18 +53,20 @@ CatalogMeta *CatalogMeta::DeserializeFrom(char *buf, MemHeap *heap) {
 
   uint32_t ser_cnt = 0;
   uint32_t i;
-  uint32_t magic_number, table_meta_pages_num, index_meta_pages_num;
+  uint32_t magic_number = 0, table_meta_pages_num, index_meta_pages_num;
   uint32_t table_id, page_id, index_id;
 
   // to silence warning
   ser_cnt++;
   ser_cnt--;
 
+  magic_number++;
+
   std::map<table_id_t, page_id_t> table_meta_pages;
   std::map<index_id_t, page_id_t> index_meta_pages;
 
   // read and check magic number
-  magic_number = MACH_READ_INT32(buf);
+  magic_number = MACH_READ_UINT32(buf);
   ASSERT(magic_number == CATALOG_METADATA_MAGIC_NUM, "*CatalogMeta::DeserializeFrom : Magic Number Unmatched");
   MOVE_FORWARD(buf, ser_cnt, uint32_t);
 
@@ -141,11 +143,42 @@ CatalogManager::CatalogManager(BufferPoolManager *buffer_pool_manager, LockManag
   }
 }
 CatalogManager::~CatalogManager() {
-  //  ASSERT(catalog_meta_ != nullptr, "Null Meta");
-  //  FlushCatalogMetaPage();
+  auto & table_metas = catalog_meta_->table_meta_pages_;
+  auto & index_metas = catalog_meta_->index_meta_pages_;
+  TableInfo* table_info = nullptr;
+  IndexInfo* index_info = nullptr;
 
-  //  delete heap_;
-  delete heap_;
+
+  for(auto & idx : index_metas) {
+    ASSERT(!buffer_pool_manager_->IsPageFree(idx.second), "Invalid Index Meta");
+    index_info = indexes_[idx.first];
+    index_info->UpdateRootId();
+
+    auto idx_meta = buffer_pool_manager_->FetchPage(idx.second);
+    ASSERT(idx_meta != nullptr, "NULL index meta");
+    index_info->meta_data_->SerializeTo(idx_meta->GetData());
+    buffer_pool_manager_->FlushPage(idx.second);
+    buffer_pool_manager_->UnpinPage(idx.second, false);
+  }
+
+  for(auto &tb: table_metas) {
+    ASSERT(!buffer_pool_manager_->IsPageFree(tb.second), "Invalid Table Meta");
+    table_info = tables_[tb.first];
+    table_info->UpdateTableMeta();
+
+    auto tb_meta = buffer_pool_manager_->FetchPage(tb.second);
+    ASSERT(tb_meta != nullptr, "NULL table meta");
+    buffer_pool_manager_->FlushPage(tb.second);
+    buffer_pool_manager_->UnpinPage(tb.second, false);
+  }
+
+  auto db_meta = buffer_pool_manager_->FetchPage(0);
+  ASSERT(db_meta != nullptr, "Invalid db meta");
+  catalog_meta_->SerializeTo(db_meta->GetData());
+  buffer_pool_manager_->FlushPage(0);
+  buffer_pool_manager_->UnpinPage(0, false);
+
+
 }
 
 dberr_t CatalogManager::CreateTable(const string &table_name, TableSchema *schema, Transaction *txn,
@@ -179,6 +212,13 @@ dberr_t CatalogManager::CreateTable(const string &table_name, TableSchema *schem
   FlushCatalogMetaPage();
   buffer_pool_manager_->FlushPage(table_meta_page_id);
   buffer_pool_manager_->UnpinPage(table_meta_page_id, false);
+
+  std::unordered_map<std::string, std::size_t> column_indexes;
+  for(std::size_t i=0; i<table_info->GetSchema()->GetColumnCount(); i++) {
+    column_indexes.insert(std::make_pair(table_info->GetSchema()->GetColumns()[i]->GetName(), i));
+  }
+
+  std::swap(table_column_indexes[table_info->GetTableName()], column_indexes);
 
   return DB_SUCCESS;
 }
@@ -220,7 +260,7 @@ dberr_t CatalogManager::CreateIndex(const std::string &table_name, const string 
   if (!table_names_.count(table_name)) return DB_TABLE_NOT_EXIST;
 
   // whether the index exists in the table
-  if (!index_names_[table_name].count(index_name)) return DB_INDEX_NOT_FOUND;
+  if (index_names_[table_name].count(index_name)) return DB_INDEX_ALREADY_EXIST;
 
   // whether all the column names of the index exist
 
@@ -394,6 +434,8 @@ dberr_t CatalogManager::DropTable(const string &table_name) {
 
   FlushCatalogMetaPage();
 
+  table_column_indexes.erase(table_name);
+
   return DB_SUCCESS;
 }
 
@@ -472,6 +514,12 @@ dberr_t CatalogManager::LoadTable(const table_id_t table_id, const page_id_t pag
   else
     ++next_index_id_;
 
+  std::unordered_map<std::string, std::size_t> column_indexes;
+  for(std::size_t i=0; i<table_info->GetSchema()->GetColumnCount(); i++) {
+    column_indexes.insert(std::make_pair(table_info->GetSchema()->GetColumns()[i]->GetName(), i));
+  }
+//  table_column_indexes[table_info->GetTableName()]
+  std::swap(table_column_indexes[table_info->GetTableName()], column_indexes);
   return DB_SUCCESS;
 }
 

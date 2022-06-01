@@ -58,8 +58,10 @@ uint32_t IndexMetadata::DeserializeFrom(char *buf, IndexMetadata *&index_meta, M
   ASSERT(buf != nullptr, "IndexMetadata::DeserializeFrom : Null buf");
   ASSERT(index_meta == nullptr, "IndexMetadata::DeserializeFrom: Not Null index_meta");
 
-  uint32_t ser_cnt = 0, magic_number, index_name_len, key_map_len;
+  uint32_t ser_cnt = 0, magic_number = 0, index_name_len, key_map_len;
   uint32_t i;
+
+//  ++magic_number;
 
   index_id_t index_id;
   std::string index_name;

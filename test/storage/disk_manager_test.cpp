@@ -38,7 +38,7 @@ TEST(DiskManagerTest, BitMapPageTest) {
 
 TEST(DiskManagerTest, FreePageAllocationTest) {
   std::string db_name = "disk_test.db";
-//  remove(db_name.c_str());
+  remove(db_name.c_str());
   DiskManager *disk_mgr = new DiskManager(db_name);
   int extent_nums = 2;
 
