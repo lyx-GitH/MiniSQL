@@ -34,11 +34,13 @@ class BPlusTree {
  public:
   static std::list<page_id_t> deleted_pages;
 
-  explicit BPlusTree(index_id_t index_id, BufferPoolManager *buffer_pool_manager, const KeyComparator &comparator,
+  explicit BPlusTree(index_id_t index_id,page_id_t root_id, BufferPoolManager *buffer_pool_manager, const KeyComparator &comparator,
                      int leaf_max_size = LEAF_PAGE_SIZE, int internal_max_size = INTERNAL_PAGE_SIZE);
 
   // Returns true if this B+ tree has no keys and values.
   bool IsEmpty() const;
+
+  inline page_id_t GetRootPageId(){return root_page_id_;};
 
   // Insert a key-value pair into this B+ tree.
   bool Insert(const KeyType &key, const ValueType &value, Transaction *transaction = nullptr);

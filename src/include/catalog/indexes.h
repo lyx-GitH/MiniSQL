@@ -32,18 +32,21 @@ class IndexMetadata {
 
   inline index_id_t GetIndexId() const { return index_id_; }
 
+  inline page_id_t GetRootPageId() const {return root_page_id_;}
+
  private:
   IndexMetadata() = delete;
 
   explicit IndexMetadata(const index_id_t index_id, const std::string &index_name, const table_id_t table_id,
                          const std::vector<uint32_t> &key_map)
-      : index_id_(index_id), index_name_(index_name), table_id_(table_id), key_map_(key_map){}
+      : index_id_(index_id), index_name_(index_name), table_id_(table_id), root_page_id_(INVALID_PAGE_ID), key_map_(key_map){}
 
  private:
   static constexpr uint32_t INDEX_METADATA_MAGIC_NUM = 344528;
   index_id_t index_id_;
   std::string index_name_;
   table_id_t table_id_;
+  page_id_t root_page_id_;
   std::vector<uint32_t> key_map_; /** The mapping of index key to tuple key */
 };
 
@@ -81,6 +84,14 @@ class IndexInfo {
 
   inline TableInfo *GetTableInfo() const { return table_info_; }
 
+  inline page_id_t GetRootPageId() const {return index_->GetRootPageId();};
+
+  inline void UpdateRootId() {
+    meta_data_->root_page_id_ = index_->GetRootPageId();
+  }
+
+//  inline page_id_t GetRootPageId() const {}
+
   void FlushMetaPage(BufferPoolManager* buffer_pool_manager, const page_id_t& meta_page_id) {
     auto page = buffer_pool_manager->FetchPage(meta_page_id);
     ASSERT(page != nullptr, "Invalid MetaPage Fetch");
@@ -97,7 +108,7 @@ class IndexInfo {
     using INDEX_KEY_TYPE = GenericKey<32>;
     using INDEX_COMPARATOR_TYPE = GenericComparator<32>;
     using BP_TREE_INDEX = BPlusTreeIndex<INDEX_KEY_TYPE, RowId, INDEX_COMPARATOR_TYPE>;
-    auto index = new (heap_->Allocate(sizeof(BP_TREE_INDEX)))BP_TREE_INDEX(meta_data_->GetIndexId(), key_schema_, buffer_pool_manager);
+    auto index = new (heap_->Allocate(sizeof(BP_TREE_INDEX)))BP_TREE_INDEX(meta_data_->GetIndexId(), meta_data_->GetRootPageId(), key_schema_, buffer_pool_manager);
     // ASSERT(false, "Not Implemented yet.");
     return index;
   }

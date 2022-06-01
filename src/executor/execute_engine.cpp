@@ -116,7 +116,7 @@ dberr_t ExecuteEngine::ExecuteDropDatabase(pSyntaxNode ast, ExecuteContext *cont
   db_name.append(db_file_posfix);
 
   if (dbs_.count(db_name) == 0) {
-    ENABLE_ERROR << "No Such Database: " << db_name << DISABLED;
+    ENABLE_ERROR << "database  " << db_name<<" not exist" << DISABLED;
     return DB_FAILED;
   }
 

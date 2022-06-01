@@ -72,7 +72,7 @@ class TableInfo {
   inline page_id_t GetRootPageId() const { return table_meta_->root_page_id_; }
 
   inline void UpdateTableMeta() {
-    //table_meta_->root_page_id_ = table_heap_->GetFirstPageId();
+    table_meta_->root_page_id_ = table_heap_->GetFirstPageId();
   }
 
   void FlushMetaPage(BufferPoolManager* buffer_pool_manager, const page_id_t& meta_page_id) {

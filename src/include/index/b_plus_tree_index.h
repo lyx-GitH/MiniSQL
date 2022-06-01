@@ -10,7 +10,7 @@
 INDEX_TEMPLATE_ARGUMENTS
 class BPlusTreeIndex : public Index {
 public:
-  BPlusTreeIndex(index_id_t index_id, IndexSchema *key_schema, BufferPoolManager *buffer_pool_manager);
+  BPlusTreeIndex(index_id_t index_id, page_id_t root_id, IndexSchema *key_schema, BufferPoolManager *buffer_pool_manager);
 
   dberr_t InsertEntry(const Row &key, RowId row_id, Transaction *txn) override;
 
@@ -23,6 +23,8 @@ public:
   void RangeScanKey(const Row& key, std::unordered_set<RowId>& ans_set, bool to_left, bool key_included) override;
 
   dberr_t Destroy() override;
+
+  page_id_t GetRootPageId() override;
 
 //  dberr_t Remove() override;
 

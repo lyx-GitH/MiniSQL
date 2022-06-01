@@ -29,6 +29,11 @@ uint32_t IndexMetadata::SerializeTo(char *buf) const {
   MACH_WRITE_UINT32(buf, table_id_);
   MOVE_FORWARD(buf, ser_size, uint32_t);
 
+  //write root_page_id
+  MACH_WRITE_INT32(buf, root_page_id_);
+  MOVE_FORWARD(buf, ser_size, uint32_t);
+
+
   // write key map
   MACH_WRITE_UINT32(buf, key_map_.size());
   MOVE_FORWARD(buf, ser_size, uint32_t);
@@ -46,7 +51,7 @@ uint32_t IndexMetadata::GetSerializedSize() const {
   ints: INDEX_METADATA_MAGIC_NUM, index_id_, table_id_, index_name_.length(), key_map_.size(), key_map_
   string: index_name_
   */
-  return sizeof(uint32_t) * (5 + key_map_.size()) + index_name_.size();
+  return sizeof(uint32_t) * (6 + key_map_.size()) + index_name_.size();
 }
 
 uint32_t IndexMetadata::DeserializeFrom(char *buf, IndexMetadata *&index_meta, MemHeap *heap) {
@@ -60,6 +65,7 @@ uint32_t IndexMetadata::DeserializeFrom(char *buf, IndexMetadata *&index_meta, M
   std::string index_name;
   table_id_t table_id;
   uint32_t key_id;
+  page_id_t root_page_id;
   std::vector<uint32_t> key_map;
 
   // read and check magic number
@@ -85,6 +91,10 @@ uint32_t IndexMetadata::DeserializeFrom(char *buf, IndexMetadata *&index_meta, M
   table_id = MACH_READ_INT32(buf);
   MOVE_FORWARD(buf, ser_cnt, uint32_t);
 
+  //read root_id
+  root_page_id = MACH_READ_INT32(buf);
+  MOVE_FORWARD(buf, ser_cnt, uint32_t);
+
   // read key map
   key_map_len = MACH_READ_INT32(buf);
   MOVE_FORWARD(buf, ser_cnt, uint32_t);
@@ -96,6 +106,7 @@ uint32_t IndexMetadata::DeserializeFrom(char *buf, IndexMetadata *&index_meta, M
   }
 
   index_meta = Create(index_id, index_name, table_id, key_map, heap);
+  index_meta->root_page_id_ = root_page_id;
 
   return ser_cnt;
 }

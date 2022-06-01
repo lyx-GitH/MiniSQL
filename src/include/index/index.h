@@ -26,6 +26,10 @@ class Index {
 
   virtual dberr_t Destroy() = 0;
 
+  virtual page_id_t GetRootPageId() = 0;
+
+
+
 
 
  protected:

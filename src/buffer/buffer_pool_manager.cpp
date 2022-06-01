@@ -21,6 +21,7 @@ BufferPoolManager::~BufferPoolManager() {
 
 Page *BufferPoolManager::FetchPage(page_id_t page_id) {
   if (page_id == INVALID_PAGE_ID) return nullptr;
+  ASSERT(disk_manager_->IsPageFree(page_id)== false, "Fetching Free Pages");
   // this page is already inside the page table.
   if (page_table_.count(page_id)) {
     auto frame_of_page = page_table_[page_id];
@@ -94,7 +95,11 @@ Page *BufferPoolManager::NewPage(page_id_t &page_id) {
 }
 
 bool BufferPoolManager::DeletePage(page_id_t page_id) {
-  if (!page_table_.count(page_id)) return true;
+
+  if (!page_table_.count(page_id)) {
+    DeallocatePage(page_id);
+    return true;
+  }
   frame_id_t frame_of_page = page_table_[page_id];
   if (pages_[frame_of_page].GetPinCount() != 0) return false;
 

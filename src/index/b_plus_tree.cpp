@@ -14,20 +14,21 @@ INDEX_TEMPLATE_ARGUMENTS
 std::list<page_id_t> BPLUSTREE_TYPE::deleted_pages;
 
 INDEX_TEMPLATE_ARGUMENTS
-BPLUSTREE_TYPE::BPlusTree(index_id_t index_id, BufferPoolManager *buffer_pool_manager, const KeyComparator &comparator,
+BPLUSTREE_TYPE::BPlusTree(index_id_t index_id, page_id_t root_id, BufferPoolManager *buffer_pool_manager, const KeyComparator &comparator,
                           int leaf_max_size, int internal_max_size)
     : index_id_(index_id),
-      root_page_id_(INVALID_PAGE_ID),
+      root_page_id_(root_id),
       buffer_pool_manager_(buffer_pool_manager),
       comparator_(comparator),
       leaf_max_size_(leaf_max_size),
       internal_max_size_(internal_max_size) {
-  auto index_root_page = TO_TYPE(IndexRootsPage*, buffer_pool_manager->FetchPage(INDEX_ROOTS_PAGE_ID)->GetData());
-  if((unsigned int)(index_root_page->GetIndexCount()) > index_id){
-    index_root_page->GetRootId(index_id, &root_page_id_);
-  }
+//  auto index_root_page = TO_TYPE(IndexRootsPage*, buffer_pool_manager->FetchPage(INDEX_ROOTS_PAGE_ID)->GetData());
+//  ASSERT(index_root_page != nullptr, "Invalid Index Root");
+//  bool isGot = index_root_page->GetRootId(index_id, &root_page_id_);
+//  ASSERT(isGot, "Get Index Root Id Failed");
+  if(root_page_id_ != INVALID_PAGE_ID)
+    ASSERT(buffer_pool_manager->IsPageFree(root_page_id_)== false, "UnAssigned Root Page");
 
-  buffer_pool_manager->UnpinPage(INDEX_ROOTS_PAGE_ID, false);
 }
 
 INDEX_TEMPLATE_ARGUMENTS
@@ -595,20 +596,20 @@ Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost) {
  * defined under include/page/header_page.h)
  * Call this method everytime root page id is changed.
  * @parameter: insert_record      default value is false. When set to true,
- * insert a record <index_name, root_page_id> into header page instead of
+ * insert a record <index_name, root_page_id_> into header page instead of
  * updating it.
  */
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::UpdateRootPageId(int insert_record) {
-  auto index_root_page= TO_TYPE(IndexRootsPage*, buffer_pool_manager_->FetchPage(INDEX_ROOTS_PAGE_ID)->GetData());
-  ASSERT(index_root_page != nullptr, "invalid root fetch");
-  bool res;
-  res = index_root_page->Update(index_id_, root_page_id_);
-  if(!res)
-    res = index_root_page->Insert(index_id_, root_page_id_);
-
-  ASSERT(res, "Wrong Root Update");
-  buffer_pool_manager_->UnpinPage(INDEX_ROOTS_PAGE_ID, true);
+//  auto index_root_page= TO_TYPE(IndexRootsPage*, buffer_pool_manager_->FetchPage(INDEX_ROOTS_PAGE_ID)->GetData());
+//  ASSERT(index_root_page != nullptr, "invalid root fetch");
+//  bool res;
+//  res = index_root_page->Update(index_id_, root_page_id_);
+//  if(!res)
+//    res = index_root_page->Insert(index_id_, root_page_id_);
+//
+//  ASSERT(res, "Wrong Root Update");
+//  buffer_pool_manager_->UnpinPage(INDEX_ROOTS_PAGE_ID, true);
 }
 
 /**

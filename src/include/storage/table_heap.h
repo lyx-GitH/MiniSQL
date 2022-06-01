@@ -95,7 +95,7 @@ class TableHeap {
   /**
    * Free table heap and release storage in disk file
    */
-  void FreeHeap();
+  void FreeHeap(bool remove_first = false);
 
   void SaveTable() {
     for(auto pages : Pages)
@@ -132,11 +132,12 @@ class TableHeap {
         Pages(),
         log_manager_(log_manager),
         lock_manager_(lock_manager){
-            //    auto FirstPage = reinterpret_cast<TablePage *>(buffer_pool_manager->NewPage(first_page_id_));
-            //    ASSERT(FirstPage != nullptr, "TableHeap : First Page Allocation failed");
-            //    FirstPage->Init(first_page_id_, INVALID_PAGE_ID, log_manager, txn);
-            //    FirstPage->SetNextPageId(INVALID_PAGE_ID);
-            //    INSERT(Pages, FirstPage);
+            TablePage* first_page = reinterpret_cast<TablePage*>(buffer_pool_manager->NewPage(first_page_id_));
+            ASSERT(first_page != nullptr && first_page_id_ != INVALID_PAGE_ID, "Invalid Table Heap Init");
+            first_page->Init(first_page_id_, INVALID_PAGE_ID, log_manager ,txn);
+            first_page->SetNextPageId(INVALID_PAGE_ID);
+            INSERT(Pages, first_page);
+            buffer_pool_manager->UnpinPage(first_page_id_, true);
         };
 
   /**
@@ -153,12 +154,16 @@ class TableHeap {
     // Push every page into <Pages> for access.
     auto cur_page_id = first_page_id_;
     TablePage *cur_page = nullptr;
-    while (cur_page_id != INVALID_PAGE_ID) {
+    while (cur_page_id > 0) {
       cur_page = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(cur_page_id));
       ASSERT(cur_page != nullptr, "NULL page encountered");
       INSERT(Pages, cur_page);
+      buffer_pool_manager->UnpinPage(cur_page->GetTablePageId(), false);
       cur_page_id = cur_page->GetNextPageId();
+
     }
+
+    ASSERT(cur_page_id == INVALID_PAGE_ID, "Unexpected Init");
   }
 
  private:

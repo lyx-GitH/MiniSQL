@@ -119,12 +119,19 @@ void TableHeap::RollbackDelete(const RowId &rid, Transaction *txn) {
   buffer_pool_manager_->UnpinPage(page->GetTablePageId(), true);
 }
 
-void TableHeap::FreeHeap() {
+void TableHeap::FreeHeap(bool remover_first) {
+//  const auto first_page_id = first_page_id_;
   for (auto &page_batch : Pages) {
     for (auto &page : page_batch.second) buffer_pool_manager_->DeletePage(page);
   }
-  first_page_id_ = INVALID_PAGE_ID;
   Pages.clear();
+  if(!remover_first) {
+    auto first_page = reinterpret_cast<TablePage*>(buffer_pool_manager_->FetchPage(first_page_id_));
+    ASSERT(first_page != nullptr, "Invalid First Page Fetch");
+    first_page->Init(first_page_id_, INVALID_PAGE_ID, log_manager_, nullptr);
+    first_page->SetNextPageId(INVALID_PAGE_ID);
+    buffer_pool_manager_->UnpinPage(first_page_id_, true);
+  }
 }
 
 void TableHeap::FetchAllIds(std::unordered_set<RowId> &ans_set) {

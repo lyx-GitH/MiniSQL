@@ -2,9 +2,9 @@
 #include "index/generic_key.h"
 
 INDEX_TEMPLATE_ARGUMENTS
-BPLUSTREE_INDEX_TYPE::BPlusTreeIndex(index_id_t index_id, IndexSchema *key_schema,
+BPLUSTREE_INDEX_TYPE::BPlusTreeIndex(index_id_t index_id, page_id_t root_id, IndexSchema *key_schema,
                                      BufferPoolManager *buffer_pool_manager)
-    : Index(index_id, key_schema), comparator_(key_schema_), container_(index_id, buffer_pool_manager, comparator_) {}
+    : Index(index_id, key_schema), comparator_(key_schema_), container_(index_id, root_id, buffer_pool_manager, comparator_) {}
 
 INDEX_TEMPLATE_ARGUMENTS
 dberr_t BPLUSTREE_INDEX_TYPE::InsertEntry(const Row &key, RowId row_id, Transaction *txn) {
@@ -27,6 +27,11 @@ dberr_t BPLUSTREE_INDEX_TYPE::RemoveEntry(const Row &key, RowId row_id, Transact
 
   container_.Remove(index_key, txn);
   return DB_SUCCESS;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+page_id_t BPLUSTREE_INDEX_TYPE::GetRootPageId() {
+  return container_.GetRootPageId();
 }
 
 INDEX_TEMPLATE_ARGUMENTS
