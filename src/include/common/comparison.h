@@ -31,7 +31,7 @@ const comp_func lte = [](const Field &a, const Field &b) -> bool { return a.Comp
 
 const comp_func gt = [](const Field &a, const Field &b) -> bool { return a.CompareGreaterThan(b) == kTrue; };
 
-const comp_func gte = [](const Field &a, const Field &b) -> bool { return a.CompareLessThanEquals(b) == kTrue; };
+const comp_func gte = [](const Field &a, const Field &b) -> bool { return a.CompareGreaterThanEquals(b) == kTrue; };
 
 const comp_func isNull = [](const Field &a, const Field &b) -> bool { return a.IsNull(); };
 

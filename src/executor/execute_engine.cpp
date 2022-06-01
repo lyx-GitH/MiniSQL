@@ -123,11 +123,17 @@ dberr_t ExecuteEngine::ExecuteShowDatabases(pSyntaxNode ast, ExecuteContext *con
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteShowDatabases" << std::endl;
 #endif
+  vector<vector<string>> grid;
 
   int i = 0;
   for (auto &db_name : dbs_) {
-    COUT_ALIGN(10) << '|' << i << '|' << db_name.first << '|' << std::endl;
+    vector<string> line;
+    line.push_back(to_string(i));
+    line.push_back(db_name.first);
+    grid.push_back(std::move(line));
+    ++i;
   }
+  format_print(grid);
   return DB_SUCCESS;
 }
 
@@ -143,6 +149,7 @@ dberr_t ExecuteEngine::ExecuteUseDatabase(pSyntaxNode ast, ExecuteContext *conte
     return DB_FAILED;
   }
   std::swap(current_db_, db_name);
+  std::cout << "database changed: " << current_db_ << std::endl;
   return DB_SUCCESS;
 }
 
@@ -155,11 +162,18 @@ dberr_t ExecuteEngine::ExecuteShowTables(pSyntaxNode ast, ExecuteContext *contex
     ENABLE_ERROR << "Current Database Not Assigned" << DISABLED;
   };
 
+  vector<vector<string>> grid;
+
   int i = 0;
   for (auto &table : database_structure[current_db_]) {
-    COUT_ALIGN(10) << '|' << i << '|' << table.first << std::endl;
+    vector<string> line;
+    line.push_back(to_string(i));
+    line.push_back(table.first);
+    grid.push_back(std::move(line));
     ++i;
   }
+
+  format_print(grid);
 
   return DB_SUCCESS;
 }
@@ -215,12 +229,22 @@ dberr_t ExecuteEngine::ExecuteShowIndexes(pSyntaxNode ast, ExecuteContext *conte
     return DB_FAILED;
   }
 
+  vector<vector<string>> grid;
   int i = 0;
+
+  grid.push_back({"No", "Index Name", "Table Name"});
   for (auto &table : database_structure[current_db_]) {
-    COUT_ALIGN(10) << '|' << "No." << '|' << "name" << '|' << "table" << std::endl;
-    for (auto &index : table.second)
-      COUT_ALIGN(10) << '|' << (i++) << '|' << index.first << '|' << table.first << '|' << std::endl;
+    for (auto &index : table.second) {
+      vector<string> line;
+      line.push_back(to_string(i));
+      line.push_back(index.first);
+      line.push_back(table.first);
+      grid.push_back(std::move(line));
+      i++;
+    }
   }
+
+  format_print(grid, true);
 
   return DB_SUCCESS;
 }
@@ -258,7 +282,7 @@ dberr_t ExecuteEngine::ExecuteCreateIndex(pSyntaxNode ast, ExecuteContext *conte
   ASSERT(column_names.empty() == false, "No Columns Got");
 
   TableInfo *target_table = nullptr;
-  if (target_db->catalog_mgr_->GetTable(table_name, target_table) == DB_FAILED) return DB_TABLE_NOT_EXIST;
+  if (target_db->catalog_mgr_->GetTable(table_name, target_table) != DB_SUCCESS) return DB_TABLE_NOT_EXIST;
 
   const auto &column_indexes = dbs_[current_db_]->catalog_mgr_->GetTableColumnIndexes(table_name);
   for (auto &col_name : column_names) {
@@ -283,7 +307,7 @@ dberr_t ExecuteEngine::ExecuteCreateIndex(pSyntaxNode ast, ExecuteContext *conte
 
   std::unordered_set<std::string> col_set;
   for (auto &col : column_names) col_set.insert(std::move(col));
-  database_structure[current_db_][table_name].insert(std::make_pair(std::move(index_name), std::move(col_set)));
+  database_structure[current_db_][table_name].insert(std::make_pair(index_name, std::move(col_set)));
 
   IndexInfo *index_info = nullptr;
   target_db->catalog_mgr_->GetIndex(table_name, index_name, index_info);
@@ -450,6 +474,7 @@ dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
       index_info->GetIndex()->Destroy();
     }
     table_info->GetTableHeap()->FreeHeap();
+
   } else {
     std::unordered_map<std::string, std::size_t> column_index;
     for (std::size_t i = 0; i < table_info->GetSchema()->GetColumnCount(); i++)
@@ -465,6 +490,7 @@ dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
       update_index(table_name, data.GetRowId(), data.GetFields(), column_index, false);
       table_heap->MarkDelete(rid, nullptr);
     }
+    std::cout << toRemove.size() << " rows effected" << std::endl;
   }
 
   table_info->UpdateTableMeta();
@@ -522,6 +548,7 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
   // now we have all the effected rows.
   do_update(table_info, updated, ans_set, column_index);
   table_info->UpdateTableMeta();
+  std::cout << ans_set.size() << " rows effected" << std::endl;
   return DB_SUCCESS;
 }
 
@@ -879,7 +906,6 @@ void ExecuteEngine::pretty_print(TableInfo *table_info, std::vector<std::string>
   }
 
   format_print(grid);
-  std::cout << ans_set.size() << " rows effected" << std::endl;
 }
 void ExecuteEngine::do_update(const TableInfo *table_info, map<string, Field> new_values,
                               unordered_set<RowId> effected_rows, unordered_map<string, size_t> column_index) {

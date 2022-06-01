@@ -335,7 +335,7 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
   if (node->GetSize() >= node->GetMinSize()) return false;
 
   if (node->GetParentPageId() == INVALID_PAGE_ID) {
-    ASSERT(node->GetPageId() == root_page_id_ && node->GetSize() == 1, "Unqualified root");
+    ASSERT(node->GetPageId() == root_page_id_ , "Unqualified root");
     if (node->IsLeafPage() == false) {
       root_page_id_ = TO_TYPE(InternalPage *, node)->RemoveAndReturnOnlyChild();
       auto new_root_page = TO_TYPE(BPlusTreePage *, buffer_pool_manager_->FetchPage(root_page_id_)->GetData());

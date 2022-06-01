@@ -93,9 +93,8 @@ page_id_t DiskManager::AllocatePage() {
 }
 
 void DiskManager::DeAllocatePage(page_id_t logical_page_id) {
-  if(IsPageFree(logical_page_id))
-    return;
-  //ASSERT(IsPageFree(logical_page_id) == false, "Free empty page");
+  if (IsPageFree(logical_page_id)) return;
+  // ASSERT(IsPageFree(logical_page_id) == false, "Free empty page");
   auto bit_map_id = GetBitMapPhysicalId(logical_page_id);
   auto local_id = logical_page_id % max_extent_size;
   auto extent_id = logical_page_id / max_extent_size;
@@ -104,8 +103,6 @@ void DiskManager::DeAllocatePage(page_id_t logical_page_id) {
   reinterpret_cast<BitmapPage<PAGE_SIZE> *>(buf)->DeAllocatePage(local_id);
   auto disk_meta = reinterpret_cast<DiskFileMetaPage *>(meta_data_);
 
-  //ASSERT(disk_meta->extent_used_page_[extent_id] > 0, "Dealloctae null extent");
-//  ASSERT(r, "Does not deallocate a page");
 
   disk_meta->extent_used_page_[extent_id] -= 1;
   disk_meta->num_allocated_pages_ -= 1;
@@ -148,21 +145,23 @@ void DiskManager::ReadPhysicalPage(page_id_t physical_page_id, char *page_data) 
 #endif
       memset(page_data + read_count, 0, PAGE_SIZE - read_count);
 
-      if(physical_page_id == 2) {
+      if (physical_page_id == 2) {
         uint32_t mn;
         memcpy(&mn, page_data, 4);
-        LOG(INFO) <<"when reading meta page, magic num = "<<mn<<std::endl;
+        LOG(INFO) << "when reading meta page, magic num = " << mn << std::endl;
       }
     }
   }
 }
 
 void DiskManager::WritePhysicalPage(page_id_t physical_page_id, const char *page_data) {
-  if(physical_page_id == 2) {
+#ifdef ENABLE_BPM_DEBUG
+  if (physical_page_id == 2) {
     uint32_t mn;
     memcpy(&mn, page_data, 4);
-    std::cout <<"when writing meta page, magic num = "<<mn<<std::endl;
+    std::cout << "when writing meta page, magic num = " << mn << std::endl;
   }
+#endif
   size_t offset = static_cast<size_t>(physical_page_id) * PAGE_SIZE;
   // set write cursor to offset
   db_io_.seekp(offset);
