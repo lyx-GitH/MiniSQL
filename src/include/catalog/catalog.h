@@ -90,7 +90,7 @@ class CatalogManager {
 
   dberr_t DropIndex(const std::string &table_name, const std::string &index_name, bool update_meta = true);
 
-  inline const std::unordered_map<std::string, std::size_t> &GetTableColumnIndexes(const std::string &table_name) {
+  inline std::unordered_map<std::string, std::size_t> &GetTableColumnIndexes(const std::string &table_name) {
     return table_column_indexes[table_name];
   }
 

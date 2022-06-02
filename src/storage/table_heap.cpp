@@ -10,31 +10,23 @@ bool TableHeap::InsertTuple(Row &row, Transaction *txn) {
     return false;
   }
   bool isInsertSuccess = false;
-  if (IsEmpty()) {
-    auto FirstPage = reinterpret_cast<TablePage *>(buffer_pool_manager_->NewPage(first_page_id_));
-    ASSERT(FirstPage != nullptr && first_page_id_ != INVALID_PAGE_ID,
-           "TableHeap::InsertTuple Invalid Table Construction");
-    FirstPage->Init(first_page_id_, INVALID_PAGE_ID, log_manager_, txn);
-    FirstPage->SetNextPageId(INVALID_PAGE_ID);
-    isInsertSuccess = FirstPage->InsertTuple(row, schema_, txn, lock_manager_, log_manager_);
-    INSERT(Pages, FirstPage);
-    buffer_pool_manager_->FlushPage(first_page_id_);
-    buffer_pool_manager_->UnpinPage(first_page_id_, true);
-  } else if (row_size > 0 - Pages.begin()->first) {
-    //    LOG(INFO) << Pages.begin()->first;
-    // No page is enough for insertion
+
+  if (row_size > 0 - Pages.begin()->first) // No page is enough for insertion
+  {
+
     page_id_t new_page_id = INVALID_PAGE_ID;
     auto new_page = reinterpret_cast<TablePage *>(buffer_pool_manager_->NewPage(new_page_id));
-    auto old_page = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(first_page_id_));
+    auto old_page = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(last_page_id_));
 
-    ASSERT(new_page != nullptr && old_page != nullptr, "TableHeap::InsertTuple : Null While Allocating New Page");
+    ASSERT(new_page != nullptr && old_page != nullptr && new_page_id != INVALID_PAGE_ID, "TableHeap::InsertTuple : Null While Allocating New Page");
+    ASSERT(old_page->GetNextPageId() == INVALID_PAGE_ID, "not the last page");
 
     // set this page to the front of the list.
-    new_page->Init(new_page_id, INVALID_PAGE_ID, log_manager_, txn);
-    new_page->SetNextPageId(first_page_id_);
-    old_page->SetPrevPageId(new_page_id);
+    new_page->Init(new_page_id, last_page_id_, log_manager_, txn);
+    new_page->SetNextPageId(INVALID_PAGE_ID);
+    old_page->SetNextPageId(new_page_id);
 
-    first_page_id_ = new_page->GetTablePageId();
+    last_page_id_ = new_page->GetTablePageId();
     isInsertSuccess = new_page->InsertTuple(row, schema_, txn, lock_manager_, log_manager_);
     ASSERT(isInsertSuccess, "invalid insert");
     INSERT(Pages, new_page);

@@ -138,6 +138,7 @@ class TableHeap {
             first_page->SetNextPageId(INVALID_PAGE_ID);
             INSERT(Pages, first_page);
             buffer_pool_manager->UnpinPage(first_page_id_, true);
+            last_page_id_ = first_page_id_;
         };
 
   /**
@@ -159,8 +160,8 @@ class TableHeap {
       ASSERT(cur_page != nullptr, "NULL page encountered");
       INSERT(Pages, cur_page);
       buffer_pool_manager->UnpinPage(cur_page->GetTablePageId(), false);
+      last_page_id_ = cur_page_id;
       cur_page_id = cur_page->GetNextPageId();
-
     }
 
     ASSERT(cur_page_id == INVALID_PAGE_ID, "Unexpected Init");
@@ -169,6 +170,7 @@ class TableHeap {
  private:
   BufferPoolManager *buffer_pool_manager_;
   page_id_t first_page_id_;
+  page_id_t last_page_id_;
   Schema *schema_;
 
   std::map<int64_t, std::unordered_set<page_id_t>> Pages;

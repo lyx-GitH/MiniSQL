@@ -53,7 +53,7 @@ void format_print(vector<rows> &grid, bool with_head = false) {
     cout << line<<endl;
   }
 
-  std::cout <<"("<< grid.size()<<" rows)" << std::endl;
+  std::cout <<"("<< (grid.size() - with_head)<<" rows)" << std::endl;
 }
 
 #endif  // MINISQL_FORMAT_PRINT_H

@@ -316,7 +316,8 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
     deleted_pages.push_front(target_leaf->GetPageId());
   }
 
-  for (auto id : deleted_pages) buffer_pool_manager_->DeletePage(id);
+  for (auto id : deleted_pages)
+    if(id != root_page_id_) buffer_pool_manager_->DeletePage(id);
 
   deleted_pages.clear();
 }

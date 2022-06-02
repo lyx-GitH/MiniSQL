@@ -382,13 +382,14 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
       }
       used_columns.push_back(std::move(col_name));
     }
+  }else {
+    for (auto &col : table_info->GetSchema()->GetColumns()) used_columns.push_back(col->GetName());
   }
   std::unordered_set<RowId> ans_set;
   pSyntaxNode condition_node = col_node->next_->next_;
   if (!condition_node) {
     // fetch a;; ids
     table_info->GetTableHeap()->FetchAllIds(ans_set);
-    for (auto &col : table_info->GetSchema()->GetColumns()) used_columns.push_back(col->GetName());
   } else {
     if (!parse_condition(condition_node->child_, table_info, ans_set)) return DB_FAILED;
   }
@@ -422,7 +423,8 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
   ASSERT(tb_info != nullptr, "Null Table");
 
   // auto &table_columns = tb_info->GetSchema()->GetColumns();
-  std::unordered_map<std::string, std::size_t> column_index;
+  //  std::unordered_map<std::string, std::size_t> column_index;
+  auto &column_index = dbs_[current_db_]->catalog_mgr_->GetTableColumnIndexes(table_name);
 
   std::vector<Field> data_tuple{};
   make_db_tuple(cur, *tb_info->GetSchema(), column_index, data_tuple);
@@ -476,9 +478,8 @@ dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
     table_info->GetTableHeap()->FreeHeap();
 
   } else {
-    std::unordered_map<std::string, std::size_t> column_index;
-    for (std::size_t i = 0; i < table_info->GetSchema()->GetColumnCount(); i++)
-      column_index.insert(std::make_pair(table_info->GetSchema()->GetColumn(i)->GetName(), i));
+    auto &column_index = dbs_[current_db_]->catalog_mgr_->GetTableColumnIndexes(table_name);
+    ASSERT(!column_index.empty(), "invalid");
 
     std::unordered_set<RowId> toRemove;
     if (!parse_condition(ast->child_, table_info, toRemove)) return DB_FAILED;
@@ -488,7 +489,7 @@ dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
       Row data(rid);
       if (table_heap->GetTuple(&data, nullptr) == false) ASSERT(false, "error when parsing conditions");
       update_index(table_name, data.GetRowId(), data.GetFields(), column_index, false);
-      table_heap->MarkDelete(rid, nullptr);
+      table_heap->ApplyDelete(rid, nullptr);
     }
     std::cout << toRemove.size() << " rows effected" << std::endl;
   }
@@ -515,18 +516,16 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
     return DB_TABLE_NOT_EXIST;
   }
 
-  std::unordered_map<std::string, std::size_t> column_index;
+  std::unordered_map<std::string, std::size_t> column_index =
+      dbs_[current_db_]->catalog_mgr_->GetTableColumnIndexes(table_name);
   std::map<std::string, Field> updated;
 
-  int i = 0;
-  for (const auto &col : table_info->GetSchema()->GetColumns()) {
-    column_index.insert(std::make_pair(col->GetName(), i));
-    ++i;
-  }
+  ASSERT(column_index.empty() == false, "invalid");
+
   auto update_node = ast->next_->child_;
 
   // fetch updated values
-  ASSERT(update_node->type_ == kNodeUpdateValues, "Wrong Type");
+  ASSERT(update_node->type_ == kNodeUpdateValue, "Wrong Type");
   while (update_node) {
     auto f = get_field(update_node->child_, table_info);
     std::string col_name{update_node->child_->val_};
@@ -608,7 +607,7 @@ void ExecuteEngine::make_db_tuple(pSyntaxNode head, const Schema &schema,
       default:
         goto ERROR;
     }
-    column_index.insert(std::make_pair(table_columns[i]->GetName(), i));
+    // column_index.insert(std::make_pair(table_columns[i]->GetName(), i));
   }
   return;
 
@@ -709,6 +708,7 @@ bool ExecuteEngine::parse_column_definitions(const string &table_name, pSyntaxNo
   IndexInfo *index_info = nullptr;
   std::vector<Column *> table_defs;
   std::unordered_map<std::string, std::size_t> column_index;
+
   std::size_t i = 0;
 
   while (head && head->type_ != kNodeColumnList) {
@@ -724,11 +724,12 @@ bool ExecuteEngine::parse_column_definitions(const string &table_name, pSyntaxNo
       for (auto col : table_defs) delete col;
       return false;
     }
-    column_index.insert(std::make_pair(column->GetName(), i));
-    i++;
+
     table_defs.push_back(column);
+    column_index.insert(std::make_pair(column->GetName(), i));
 
     head = head->next_;
+    i++;
   }
 
   //  void *buf = mem_heap->Allocate(sizeof(TableSchema));
@@ -864,8 +865,13 @@ Field ExecuteEngine::get_field(pSyntaxNode ast, const TableInfo *table_info) {
   std::string column_name{ast->val_};
   // std::string field_value{val_node->val_};
 
-  uint32_t column_index;
-  if (table_info->GetSchema()->GetColumnIndex(column_name, column_index) == DB_FAILED) return Field(kTypeInvalid);
+  //  uint32_t column_index;
+  //  if (table_info->GetSchema()->GetColumnIndex(column_name, column_index) == DB_FAILED) return Field(kTypeInvalid);
+  const std::string &table_name = table_info->GetTableName();
+  if (!dbs_[current_db_]->catalog_mgr_->GetTableColumnIndexes(table_name).count(column_name))
+    return Field(kTypeInvalid);
+  uint32_t column_index = dbs_[current_db_]->catalog_mgr_->GetTableColumnIndexes(table_name).at(column_name);
+
   const Column *column = table_info->GetSchema()->GetColumn(column_index);
   if (val_node->type_ == kNodeNull && column->IsNullable())
     return Field(column->GetType());
@@ -896,16 +902,20 @@ void ExecuteEngine::pretty_print(TableInfo *table_info, std::vector<std::string>
                                  std::unordered_map<std::string, std::size_t> &column_index,
                                  std::unordered_set<RowId> &ans_set) {
   std::vector<std::vector<std::string>> grid;
+  grid.push_back(used_columns);
   if (ans_set.empty()) return;
   for (auto &rid : ans_set) {
     vector<string> r;
     Row row(rid);
     table_info->GetTableHeap()->GetTuple(&row, nullptr);
-    for (auto &f : row.GetFields()) r.push_back(f->toString());
+    for (uint32_t i = 0; i < used_columns.size(); i++) {
+      auto col_idx = column_index[used_columns[i]];
+      r.push_back(row.GetField(col_idx)->toString());
+    }
     grid.push_back(std::move(r));
   }
 
-  format_print(grid);
+  format_print(grid, true);
 }
 void ExecuteEngine::do_update(const TableInfo *table_info, map<string, Field> new_values,
                               unordered_set<RowId> effected_rows, unordered_map<string, size_t> column_index) {
@@ -924,7 +934,7 @@ void ExecuteEngine::do_update(const TableInfo *table_info, map<string, Field> ne
       }
     }
     if (!table_heap->UpdateTuple(cur_row, cur_row.GetRowId(), nullptr)) {
-      table_heap->MarkDelete(cur_row.GetRowId(), nullptr);
+      table_heap->ApplyDelete(cur_row.GetRowId(), nullptr);
       table_heap->InsertTuple(cur_row, nullptr);
     }
 
