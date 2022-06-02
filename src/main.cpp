@@ -34,10 +34,11 @@ void InputCommand(char *input, const int len) {
 }
 
 int main(int argc, char **argv) {
+  std::cout <<"argc: "<<argc<<std::endl;
   InitGoogleLog(argv[0]);
   // command buffer
   const int buf_size = 1024;
-  char cmd[buf_size];
+  char cmd[buf_size] = {0};
   // execute engine
   ExecuteEngine engine;
   // for print syntax tree
@@ -48,6 +49,72 @@ int main(int argc, char **argv) {
   dberr_t res;
 
   SAY_HELLO;
+
+  for (int i = 1; i < argc; i++) {
+    if (!std::filesystem::exists(argv[i])) {
+      std::cout << ENABLE_RED << "Error: No such file: " << argv[i] << std::endl;
+      break;
+    }
+    std::ifstream fin(argv[i]);
+    start = std::chrono::system_clock::now();
+    while (fin.getline(cmd, buf_size-1)) {
+
+      YY_BUFFER_STATE bp = yy_scan_string(cmd);
+      if (bp == nullptr) {
+        LOG(ERROR) << "Failed to create yy buffer state." << std::endl;
+        exit(1);
+      }
+      yy_switch_to_buffer(bp);
+
+      // init parser module
+      MinisqlParserInit();
+
+      // parse
+      yyparse();
+
+      // parse result handle
+      if (MinisqlParserGetError()) {
+        // error
+        printf("\033[1;31m%s\033[0m\n", MinisqlParserGetErrorMessage());
+        std::cout << "when parsing: "<<std::string (cmd)<<std::endl;
+        goto out;
+      }
+      ExecuteContext context;
+
+      /*====================== Execution Start =======================*/
+
+      res = engine.Execute(MinisqlGetParserRootNode(), &context);
+
+      /*====================== Execution End ========================*/
+
+      if (res == DB_SUCCESS)
+        ;
+      else{
+        printf("\033[1;31m[Failed] \033[0m in %llu ms, code: %d\n",
+               std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count(), res);
+        goto out;
+      }
+
+      // sleep(1);
+
+      // clean memory after parse
+      MinisqlParserFinish();
+      yy_delete_buffer(bp);
+      yylex_destroy();
+
+      // quit condition
+      if (context.flag_quit_) {
+        printf("bye!\n");
+        break;
+      }
+    }
+    end = std::chrono::system_clock::now();
+    printf("\033[1;32m[Succeeded] \033[0m file %s parsed in %llu ms\n", argv[i],
+           std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count());
+
+  }
+
+  out:
 
   while (true) {
     // read from buffer
@@ -96,7 +163,7 @@ int main(int argc, char **argv) {
       printf("\033[1;31m[Failed] \033[0m in %llu ms, code: %d\n",
              std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count(), res);
 
-    //sleep(1);
+    // sleep(1);
 
     // clean memory after parse
     MinisqlParserFinish();

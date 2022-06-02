@@ -84,7 +84,7 @@ class CatalogManager {
 
   dberr_t GetTableIndexes(const std::string &table_name, std::vector<IndexInfo *> &indexes) const;
 
-  dberr_t DropTable(const std::string &table_name);
+  dberr_t DropTable(const std::string &table_name, bool remove_index = true);
 
   void RemoveIndexesOnTable(const std::string &table_name);
 

@@ -470,13 +470,21 @@ dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
   if (!ast)  // delete every thing
   {
     // destroy the table heap
-    IndexInfo *index_info;
-    for (auto &idx : database_structure[current_db_][table_name]) {
-      dbs_[current_db_]->catalog_mgr_->GetIndex(table_name, idx.first, index_info);
-      index_info->GetIndex()->Destroy();
+    //    IndexInfo *index_info;
+    //    for (auto &idx : database_structure[current_db_][table_name]) {
+    //      dbs_[current_db_]->catalog_mgr_->GetIndex(table_name, idx.first, index_info);
+    //      index_info->GetIndex()->Destroy();
+    //    }
+    //    table_info->GetTableHeap()->FreeHeap();
+    //    table_info->GetTableHeap()->Rebuild();
+    std::vector<Column *> table_columns;
+    for (auto col : table_info->GetSchema()->GetColumns()) {
+      table_columns.emplace_back(new Column(col));
     }
-    table_info->GetTableHeap()->FreeHeap();
-    table_info->GetTableHeap()->Rebuild();
+    TableSchema *tb_schema = new TableSchema(table_columns);
+    table_info = nullptr;
+    dbs_[current_db_]->catalog_mgr_->DropTable(table_name, false);
+    dbs_[current_db_]->catalog_mgr_->CreateTable(table_name, tb_schema, nullptr, table_info);
 
   } else {
     auto &column_index = dbs_[current_db_]->catalog_mgr_->GetTableColumnIndexes(table_name);
@@ -512,7 +520,7 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
   ast = ast->child_;
   std::string table_name{ast->val_};
   TableInfo *table_info;
-  if (dbs_[current_db_]->catalog_mgr_->GetTable(table_name, table_info) == DB_FAILED) {
+  if (dbs_[current_db_]->catalog_mgr_->GetTable(table_name, table_info) != DB_SUCCESS) {
     ENABLE_ERROR << "table " << table_name << " not exists" << DISABLED;
     return DB_TABLE_NOT_EXIST;
   }

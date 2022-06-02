@@ -99,10 +99,13 @@ void TableHeap::ApplyDelete(const RowId &rid, Transaction *txn) {
     ASSERT(page->GetPrevPageId() != INVALID_PAGE_ID, "unexpected behaviour");
     auto prev_page = reinterpret_cast<TablePage*>(buffer_pool_manager_->FetchPage(page->GetPrevPageId()));
     ASSERT(prev_page != nullptr, "unexpected behaviour");
+    ASSERT(prev_page->GetNextPageId() == page->GetTablePageId(), "table heap is broken");
+
+
 
     auto next_page_id = page->GetNextPageId();
     prev_page->SetNextPageId(next_page_id);
-    if(next_page_id == INVALID_PAGE_ID)
+    if(page->GetTablePageId() == last_page_id_)
       last_page_id_ = prev_page->GetTablePageId();
 
     buffer_pool_manager_->UnpinPage(page->GetTablePageId(), false);
