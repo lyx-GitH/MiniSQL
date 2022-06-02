@@ -382,7 +382,7 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
       }
       used_columns.push_back(std::move(col_name));
     }
-  }else {
+  } else {
     for (auto &col : table_info->GetSchema()->GetColumns()) used_columns.push_back(col->GetName());
   }
   std::unordered_set<RowId> ans_set;
@@ -476,6 +476,7 @@ dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
       index_info->GetIndex()->Destroy();
     }
     table_info->GetTableHeap()->FreeHeap();
+    table_info->GetTableHeap()->Rebuild();
 
   } else {
     auto &column_index = dbs_[current_db_]->catalog_mgr_->GetTableColumnIndexes(table_name);

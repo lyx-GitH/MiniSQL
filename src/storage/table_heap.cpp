@@ -94,8 +94,28 @@ void TableHeap::ApplyDelete(const RowId &rid, Transaction *txn) {
   ASSERT(page != nullptr, "TableHeap::ApplyDelete : Page dose not exist");
   ERASE(Pages, page);
   page->ApplyDelete(rid, txn, log_manager_);
+
+  if(page->GetTupleCount() == 0 && page->GetTablePageId() != first_page_id_) {
+    ASSERT(page->GetPrevPageId() != INVALID_PAGE_ID, "unexpected behaviour");
+    auto prev_page = reinterpret_cast<TablePage*>(buffer_pool_manager_->FetchPage(page->GetPrevPageId()));
+    ASSERT(prev_page != nullptr, "unexpected behaviour");
+
+    auto next_page_id = page->GetNextPageId();
+    prev_page->SetNextPageId(next_page_id);
+    if(next_page_id == INVALID_PAGE_ID)
+      last_page_id_ = prev_page->GetTablePageId();
+
+    buffer_pool_manager_->UnpinPage(page->GetTablePageId(), false);
+    buffer_pool_manager_->UnpinPage(prev_page->GetTablePageId(), true);
+
+    buffer_pool_manager_->DeletePage(page->GetTablePageId());
+    return;
+  }
+
   INSERT(Pages, page);
-  buffer_pool_manager_->UnpinPage(page_id, true);
+
+  buffer_pool_manager_->UnpinPage(page->GetTablePageId(), true);
+
 }
 
 void TableHeap::RollbackDelete(const RowId &rid, Transaction *txn) {
@@ -117,13 +137,16 @@ void TableHeap::FreeHeap(bool remover_first) {
     for (auto &page : page_batch.second) buffer_pool_manager_->DeletePage(page);
   }
   Pages.clear();
-  if(!remover_first) {
-    auto first_page = reinterpret_cast<TablePage*>(buffer_pool_manager_->FetchPage(first_page_id_));
-    ASSERT(first_page != nullptr, "Invalid First Page Fetch");
-    first_page->Init(first_page_id_, INVALID_PAGE_ID, log_manager_, nullptr);
-    first_page->SetNextPageId(INVALID_PAGE_ID);
-    buffer_pool_manager_->UnpinPage(first_page_id_, true);
-  }
+}
+
+void TableHeap::Rebuild() {
+  TablePage* first_page = reinterpret_cast<TablePage*>(buffer_pool_manager_->NewPage(first_page_id_));
+  ASSERT(first_page != nullptr && first_page_id_ != INVALID_PAGE_ID, "Invalid Table Heap Init");
+  first_page->Init(first_page_id_, INVALID_PAGE_ID, log_manager_ ,nullptr);
+  first_page->SetNextPageId(INVALID_PAGE_ID);
+  INSERT(Pages, first_page);
+  buffer_pool_manager_->UnpinPage(first_page_id_, true);
+  last_page_id_ = first_page_id_;
 }
 
 void TableHeap::FetchAllIds(std::unordered_set<RowId> &ans_set) {

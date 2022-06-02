@@ -27,9 +27,11 @@ void format_print(vector<rows> &grid, bool with_head = false) {
   vector<uint32_t> max_lengths(grid[0].size(), 1);
 
   // get max_lengths
-  if(with_head)
-    std::sort(grid.begin()+1, grid.end(), [](const rows &a, const rows &b) { return a[0] < b[0]; });
-  else std::sort(grid.begin(), grid.end(), [](const rows &a, const rows &b) { return a[0] < b[0]; });
+  if (with_head)
+    std::sort(grid.begin() + 1, grid.end(), [](const rows &a, const rows &b) { return a[0] < b[0]; });
+  else
+    std::sort(grid.begin(), grid.end(), [](const rows &a, const rows &b) { return a[0] < b[0]; });
+
   for (uint32_t i = 0; i < grid.size(); i++) {
     for (uint32_t j = 0; j < grid[i].size(); j++) {
       max_lengths[j] = max(max_lengths[j], grid[i][j].length());
@@ -41,19 +43,21 @@ void format_print(vector<rows> &grid, bool with_head = false) {
     line += "-" + string(l, '-') + "-+";
   }
 
+  const std::string sept = "⎢";
+
   cout << line << endl;
   for (uint32_t i = 0; i < grid.size(); i++) {
-    cout << "⎢";
+    cout << sept;
     for (uint32_t j = 0; j < grid[0].size(); j++) {
-      cout<<" ";
+      cout << " ";
       output(max_lengths[j], grid[i][j]);
-      cout << " ⎢";
+      cout << ' '<< sept;
     }
     cout << endl;
-    cout << line<<endl;
+    cout << line << endl;
   }
 
-  std::cout <<"("<< (grid.size() - with_head)<<" rows)" << std::endl;
+  std::cout << "(" << (grid.size() - with_head) << " rows)" << std::endl;
 }
 
 #endif  // MINISQL_FORMAT_PRINT_H

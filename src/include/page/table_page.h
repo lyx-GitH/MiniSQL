@@ -28,6 +28,7 @@
 
 class TablePage : public Page {
  public:
+  friend class TableHeap;
   void Init(page_id_t page_id, page_id_t prev_id, LogManager *log_mgr, Transaction *txn);
 
   page_id_t GetTablePageId() { return *reinterpret_cast<page_id_t *>(GetData()); }

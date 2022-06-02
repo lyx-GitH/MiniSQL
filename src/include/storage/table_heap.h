@@ -97,6 +97,8 @@ class TableHeap {
    */
   void FreeHeap(bool remove_first = false);
 
+  void Rebuild() ;
+
   void SaveTable() {
     for(auto pages : Pages)
       for(auto page_id : pages.second)
@@ -166,6 +168,8 @@ class TableHeap {
 
     ASSERT(cur_page_id == INVALID_PAGE_ID, "Unexpected Init");
   }
+
+
 
  private:
   BufferPoolManager *buffer_pool_manager_;
