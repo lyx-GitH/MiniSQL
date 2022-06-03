@@ -422,8 +422,10 @@ dberr_t CatalogManager::DropTable(const string &table_name, bool remove_index) {
   auto table_meta_page_id = catalog_meta_->table_meta_pages_[table_id];
   table_info->GetTableHeap()->FreeHeap(true);
 
-  if(remove_index)
+  if(remove_index) {
     RemoveIndexesOnTable(table_name);
+  }
+
 
   ASSERT(buffer_pool_manager_->IsPageFree(table_meta_page_id) == false, "Missing Meta Page");
 

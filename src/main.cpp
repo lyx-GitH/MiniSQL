@@ -34,7 +34,6 @@ void InputCommand(char *input, const int len) {
 }
 
 int main(int argc, char **argv) {
-  std::cout <<"argc: "<<argc<<std::endl;
   InitGoogleLog(argv[0]);
   // command buffer
   const int buf_size = 1024;
@@ -57,8 +56,7 @@ int main(int argc, char **argv) {
     }
     std::ifstream fin(argv[i]);
     start = std::chrono::system_clock::now();
-    while (fin.getline(cmd, buf_size-1)) {
-
+    while (fin.getline(cmd, buf_size - 1)) {
       YY_BUFFER_STATE bp = yy_scan_string(cmd);
       if (bp == nullptr) {
         LOG(ERROR) << "Failed to create yy buffer state." << std::endl;
@@ -76,7 +74,7 @@ int main(int argc, char **argv) {
       if (MinisqlParserGetError()) {
         // error
         printf("\033[1;31m%s\033[0m\n", MinisqlParserGetErrorMessage());
-        std::cout << "when parsing: "<<std::string (cmd)<<std::endl;
+        std::cout << "when parsing: " << std::string(cmd) << std::endl;
         goto out;
       }
       ExecuteContext context;
@@ -89,7 +87,7 @@ int main(int argc, char **argv) {
 
       if (res == DB_SUCCESS)
         ;
-      else{
+      else {
         printf("\033[1;31m[Failed] \033[0m in %llu ms, code: %d\n",
                std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count(), res);
         goto out;
@@ -111,10 +109,9 @@ int main(int argc, char **argv) {
     end = std::chrono::system_clock::now();
     printf("\033[1;32m[Succeeded] \033[0m file %s parsed in %llu ms\n", argv[i],
            std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count());
-
   }
 
-  out:
+out:
 
   while (true) {
     // read from buffer

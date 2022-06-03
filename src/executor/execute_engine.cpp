@@ -469,14 +469,14 @@ dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
 
   if (!ast)  // delete every thing
   {
-    // destroy the table heap
-    //    IndexInfo *index_info;
-    //    for (auto &idx : database_structure[current_db_][table_name]) {
-    //      dbs_[current_db_]->catalog_mgr_->GetIndex(table_name, idx.first, index_info);
-    //      index_info->GetIndex()->Destroy();
-    //    }
-    //    table_info->GetTableHeap()->FreeHeap();
-    //    table_info->GetTableHeap()->Rebuild();
+
+        IndexInfo *index_info;
+        for (auto &idx : database_structure[current_db_][table_name]) {
+          dbs_[current_db_]->catalog_mgr_->GetIndex(table_name, idx.first, index_info);
+          ASSERT(index_info != nullptr, "Index NOT GOT");
+          index_info->GetIndex()->Destroy();
+        }
+
     std::vector<Column *> table_columns;
     for (auto col : table_info->GetSchema()->GetColumns()) {
       table_columns.emplace_back(new Column(col));
